@@ -773,7 +773,7 @@ let clients = [
   { id: 18, nombre: "Rubin JL", setupFee: 1500, setupDate: "2026-03-01", mensualidad: 500, diaCorte: 2, metodoCobro: "pendiente", estado: "activo", nextStep: "Cargar Tarjeta en sistema para cobro automatico el 5 de ABRIL", pagos: [{mes:"2026-03",monto:1500,estado:"pagado",dia:1},{mes:"2026-04",monto:500,estado:"pagado",dia:2},{mes:"2026-05",monto:500,estado:"pagado",dia:2},{mes:"2026-06",monto:500,estado:"pendiente",dia:2}] }
 ];
 
-let nextId = 19;
+let nextId = 19;     let fichasData = [];     const FICHAS_API_URL = 'https://n8n.srv1099081.hstgr.cloud/webhook/002e53e3-1252-4470-9995-45bf32768376';
 let editingClientId = null;
 let currentPanelClientId = null;
 let currentSort = { col: null, asc: true };
@@ -1270,6 +1270,14 @@ function openPanel(id) {
   $('sidePanel').classList.add('open');
 }
 
+       // Inject ficha de cierre data
+    const ficha = findFichaForClient(c.nombre);
+    if (ficha) {
+      const fichaDiv = document.createElement('div');
+      fichaDiv.className = 'panel-section';
+      fichaDiv.innerHTML = `<div class="panel-section-title">Ficha de Cierre</div><div style="background:var(--color-surface-offset);padding:var(--space-3);border-radius:var(--radius-md);font-size:var(--text-xs);max-height:300px;overflow-y:auto"><pre style="white-space:pre-wrap;word-break:break-word;margin:0">${JSON.stringify(ficha, null, 2)}</pre></div>`;
+      $('panelBody').insertBefore(fichaDiv, $('panelBody').children[1]);
+    }
 function closePanel() {
   $('panelOverlay').classList.remove('open');
   $('sidePanel').classList.remove('open');
@@ -1409,8 +1417,32 @@ function renderDashboard() {
   renderUpcomingTable();
 }
 
-// ===== INIT =====
+    // ===== FICHAS DE CIERRE =====
+  function fetchFichas() {
+          fetch(FICHAS_API_URL)
+        .then(r => r.json())
+        .then(data => {
+          fichasData = Array.isArray(data) ? data : [];
+          console.log('Fichas loaded:', fichasData.length);
+        })
+        .catch(err => console.warn('Error fetching fichas:', err));
+    }
+    function findFichaForClient(clientName) {
+      if (!fichasData.length) return null;
+      const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cn = norm(clientName);
+      for (const f of fichasData) {
+        const fn = norm(f.nombre_empresa || '');
+        if (fn === cn || fn.includes(cn) || cn.includes(fn)) {
+          try { return JSON.parse(f.ficha_data); } catch(e) { return f.ficha_data; }
+        }
+      }
+      return null;
+    }
+   
+   // ===== INIT =====
 renderAll();
+       fetchFichas();
 </script>
 </body>
 </html>
