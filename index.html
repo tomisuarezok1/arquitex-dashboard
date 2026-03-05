@@ -773,7 +773,7 @@ let clients = [
   { id: 18, nombre: "Rubin JL", setupFee: 1500, setupDate: "2026-03-01", mensualidad: 500, diaCorte: 2, metodoCobro: "pendiente", estado: "activo", nextStep: "Cargar Tarjeta en sistema para cobro automatico el 5 de ABRIL", pagos: [{mes:"2026-03",monto:1500,estado:"pagado",dia:1},{mes:"2026-04",monto:500,estado:"pagado",dia:2},{mes:"2026-05",monto:500,estado:"pagado",dia:2},{mes:"2026-06",monto:500,estado:"pendiente",dia:2}] }
 ];
 
-let nextId = 19;     let fichasData = [];     const FICHAS_API_URL = 'https://n8n.srv1099081.hstgr.cloud/webhook/002e53e3-1252-4470-9995-45bf32768376';
+let nextId = 19;     let fichasData = [];     const FICHAS_API_URL = 'https://n8n.srv1099081.hstgr.cloud/webhook/002e53e3-1252-4470-9995-45bf32768376';    const CLIENTES_API_URL = 'https://n8n.srv1099081.hstgr.cloud/webhook/8d43e139-22af-4b68-861a-74f1197916a0';
 let editingClientId = null;
 let currentPanelClientId = null;
 let currentSort = { col: null, asc: true };
@@ -1271,7 +1271,7 @@ function openPanel(id) {
 }
 
        // Inject ficha de cierre data
-    const ficha = findFichaForClient(c.nombre);
+    let ficha = findFichaForClient(c.nombre); if (!ficha && c.fichaData) { try { ficha = typeof c.fichaData === 'string' ? JSON.parse(c.fichaData) : c.fichaData; } catch(e) { ficha = c.fichaData; } }
     if (ficha) {
       const fichaDiv = document.createElement('div');
       fichaDiv.className = 'panel-section';
@@ -1439,10 +1439,42 @@ function renderDashboard() {
       }
       return null;
     }
+
+       // ===== FETCH CLIENTS FROM API =====
+    function fetchClientsFromAPI() {
+      fetch(CLIENTES_API_URL)
+        .then(r => r.json())
+        .then(data => {
+          const apiClients = Array.isArray(data) ? data : [];
+          apiClients.forEach(ac => {
+            const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const exists = clients.some(c => norm(c.nombre) === norm(ac.nombre || ''));
+            if (!exists && ac.nombre) {
+              const newClient = {
+                id: nextId++,
+                nombre: ac.nombre,
+                setupFee: ac.setupFee ? parseInt(ac.setupFee) : null,
+                setupDate: ac.setupDate || null,
+                mensualidad: ac.mensualidad ? parseInt(ac.mensualidad) : 0,
+                diaCorte: ac.diaCorte ? parseInt(ac.diaCorte) : null,
+                metodoCobro: ac.metodoCobro || 'pendiente',
+                estado: ac.estado || 'pendiente',
+                nextStep: ac.nextStep || '',
+                pagos: [],
+                fichaData: ac.fichaData || null
+              };
+              clients.push(newClient);
+            }
+          });
+          renderAll();
+          console.log('API clients loaded:', apiClients.length);
+        })
+        .catch(err => console.warn('Error fetching clients from API:', err));
+    }
    
    // ===== INIT =====
 renderAll();
-       fetchFichas();
+       fetchFichas(); fetchClientsFromAPI();
 </script>
 </body>
 </html>
