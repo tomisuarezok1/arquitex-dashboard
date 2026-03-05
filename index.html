@@ -1268,8 +1268,7 @@ function openPanel(id) {
   $('panelBody').innerHTML = html;
   $('panelOverlay').classList.add('open');
   $('sidePanel').classList.add('open');
-}
-
+   
        // Inject ficha de cierre data
     let ficha = findFichaForClient(c.nombre); if (!ficha && c.fichaData) { try { ficha = typeof c.fichaData === 'string' ? JSON.parse(c.fichaData) : c.fichaData; } catch(e) { ficha = c.fichaData; } }
     if (ficha) {
@@ -1278,6 +1277,8 @@ function openPanel(id) {
       fichaDiv.innerHTML = `<div class="panel-section-title">Ficha de Cierre</div><div style="background:var(--color-surface-offset);padding:var(--space-3);border-radius:var(--radius-md);font-size:var(--text-xs);max-height:300px;overflow-y:auto"><pre style="white-space:pre-wrap;word-break:break-word;margin:0">${JSON.stringify(ficha, null, 2)}</pre></div>`;
       $('panelBody').insertBefore(fichaDiv, $('panelBody').children[1]);
     }
+}
+
 function closePanel() {
   $('panelOverlay').classList.remove('open');
   $('sidePanel').classList.remove('open');
