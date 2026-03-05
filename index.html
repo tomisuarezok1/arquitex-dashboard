@@ -1434,6 +1434,7 @@ function renderDashboard() {
       const cn = norm(clientName);
       for (const f of fichasData) {
         const fn = norm(f.nombre_empresa || '');
+               if (!fn) continue;
         if (fn === cn || fn.includes(cn) || cn.includes(fn)) {
           try { return JSON.parse(f.ficha_data); } catch(e) { return f.ficha_data; }
         }
