@@ -980,6 +980,10 @@ table { border-collapse: collapse; width: 100%; }
   transition: transform 200ms var(--ease);
 }
 
+.modal.modal-wide {
+  width: min(560px, 90vw);
+}
+
 .modal-overlay.open .modal {
   transform: scale(1) translateY(0);
 }
@@ -1246,6 +1250,10 @@ table { border-collapse: collapse; width: 100%; }
         </select>
         <div class="toolbar-spacer"></div>
         <span class="results-count" id="resultsCount"></span>
+        <button class="btn btn-primary" onclick="openNewClientModal()" style="margin-left:8px;white-space:nowrap;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:-2px;"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          Nuevo Cliente
+        </button>
       </div>
 
       <!-- TABLE -->
@@ -1452,8 +1460,10 @@ function showToast(msg, type) {
 }
 
 /* ===== MODAL ===== */
-function openModal(html) {
-  document.getElementById('modalContent').innerHTML = html;
+function openModal(html, wide) {
+  var modal = document.getElementById('modalContent');
+  modal.innerHTML = html;
+  modal.classList.toggle('modal-wide', !!wide);
   document.getElementById('modalOverlay').classList.add('open');
 }
 
@@ -2354,6 +2364,176 @@ document.addEventListener('keydown', function(e) {
     }
   }
 });
+
+/* ===== NUEVO CLIENTE ===== */
+function openNewClientModal() {
+  var today = new Date().toISOString().split('T')[0];
+  var html = '<div class="modal-header"><div class="modal-title">Nuevo Cliente</div>' +
+    '<button class="icon-btn" onclick="closeModal()" aria-label="Cerrar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
+    '<form onsubmit="submitNewClient(event)" class="modal-body">' +
+    '<div class="form-grid">' +
+    formField('Nombre', 'text', 'nc_nombre', '', true) +
+    '<div class="form-group"><label class="form-label">Estado</label>' +
+    '<select class="form-input" name="nc_estado">' +
+    '<option value="activo">Activo</option><option value="iniciando">Iniciando</option>' +
+    '<option value="pendiente_pago" selected>Pendiente Pago</option><option value="pausado">Pausado</option>' +
+    '</select></div>' +
+    formField('Monto Setup ($)', 'number', 'nc_monto_setup', '') +
+    '<div class="form-group"><label class="form-label">Setup en Cuotas</label>' +
+    '<select class="form-input" name="nc_setup_cuotas"><option value="1">1 cuota</option><option value="2">2 cuotas</option></select></div>' +
+    formField('Mensualidad ($)', 'number', 'nc_mensualidad', '500') +
+    '<div class="form-group"><label class="form-label">Tipo Recurrente</label>' +
+    '<select class="form-input" name="nc_tipo"><option value="mensual">Mensual</option><option value="anual">Anual</option></select></div>' +
+    formField('Fecha Inicio', 'date', 'nc_fecha_inicio', today) +
+    formField('Día de Corte (1-31)', 'number', 'nc_dia_corte', '') +
+    '<div class="form-group"><label class="form-label">Método de Pago</label>' +
+    '<select class="form-input" name="nc_metodo"><option value="pendiente">Pendiente</option>' +
+    '<option value="debito_automatico">Débito Automático</option><option value="manual">Manual</option>' +
+    '<option value="efectivo">Efectivo</option></select></div>' +
+    formField('Responsable', 'text', 'nc_responsable', '') +
+    '<div class="form-group full"><label class="form-label">Observaciones</label>' +
+    '<textarea class="form-textarea" name="nc_observaciones" rows="2" placeholder="Opcional..."></textarea></div>' +
+    '<div class="form-group"><label class="form-label">Generar Cargos Recurrentes</label>' +
+    '<select class="form-input" name="nc_meses_cargos"><option value="6">Próximos 6 meses</option>' +
+    '<option value="12">Próximos 12 meses</option><option value="0">No generar</option></select></div>' +
+    '</div></form>' +
+    '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="document.querySelector(\'#modalContent form\').requestSubmit()">Crear Cliente</button></div>';
+  openModal(html, true);
+  // Focus nombre
+  setTimeout(function() {
+    var inp = document.querySelector('#modalContent input[name=nc_nombre]');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+async function submitNewClient(e) {
+  e.preventDefault();
+  var fd = new FormData(e.target);
+  var nombre = (fd.get('nc_nombre') || '').trim();
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+
+  var montoSetup = parseFloat(fd.get('nc_monto_setup')) || 0;
+  var setupCuotas = parseInt(fd.get('nc_setup_cuotas')) || 1;
+  var mensualidad = parseFloat(fd.get('nc_mensualidad')) || 0;
+  var tipo = fd.get('nc_tipo') || 'mensual';
+  var fechaInicio = fd.get('nc_fecha_inicio') || null;
+  var diaCorte = parseInt(fd.get('nc_dia_corte')) || null;
+  var metodo = fd.get('nc_metodo') || 'pendiente';
+  var estado = fd.get('nc_estado') || 'pendiente_pago';
+  var responsable = (fd.get('nc_responsable') || '').trim() || null;
+  var observaciones = (fd.get('nc_observaciones') || '').trim() || null;
+  var mesesCargos = parseInt(fd.get('nc_meses_cargos')) || 0;
+
+  try {
+    showToast('Creando cliente…', 'info');
+
+    // 1. Insert client
+    var res = await sb.from('clientes').insert({
+      nombre: nombre,
+      estado: estado,
+      monto_setup: montoSetup || null,
+      setup_cuotas: setupCuotas,
+      monto_mensualidad: mensualidad,
+      tipo_recurrente: tipo,
+      fecha_inicio: fechaInicio,
+      dia_corte: diaCorte,
+      metodo_pago: metodo,
+      debito_configurado: false,
+      responsable: responsable,
+      observaciones: observaciones,
+      onboarding_ready: false
+    }).select().single();
+
+    if (res.error) throw res.error;
+    var clienteId = res.data.id;
+
+    // 2. Generate cargos
+    var cargos = [];
+    var startDate = fechaInicio ? new Date(fechaInicio + 'T12:00:00') : new Date();
+
+    // Setup cargos
+    if (montoSetup > 0) {
+      var montoC1 = setupCuotas === 2 ? Math.ceil(montoSetup / 2) : montoSetup;
+      cargos.push({
+        cliente_id: clienteId,
+        concepto: 'setup_c1',
+        periodo: null,
+        monto: montoC1,
+        fecha_vencimiento: fechaInicio || new Date().toISOString().split('T')[0],
+        estado: 'pendiente'
+      });
+      if (setupCuotas === 2) {
+        var c2Date = new Date(startDate);
+        c2Date.setDate(c2Date.getDate() + 30);
+        cargos.push({
+          cliente_id: clienteId,
+          concepto: 'setup_c2',
+          periodo: null,
+          monto: montoSetup - montoC1,
+          fecha_vencimiento: c2Date.toISOString().split('T')[0],
+          estado: 'pendiente'
+        });
+      }
+    }
+
+    // Recurring cargos
+    if (mesesCargos > 0 && mensualidad > 0) {
+      var corte = diaCorte || startDate.getDate();
+      if (tipo === 'mensual') {
+        for (var i = 0; i < mesesCargos; i++) {
+          var d = new Date(startDate.getFullYear(), startDate.getMonth() + i, corte);
+          // Skip if before start date
+          if (d < startDate && i === 0) {
+            d = new Date(startDate.getFullYear(), startDate.getMonth() + 1, corte);
+          }
+          var periodo = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+          // Avoid duplicate periods
+          var exists = cargos.find(function(c) { return c.periodo === periodo && c.concepto === 'mensualidad'; });
+          if (!exists) {
+            cargos.push({
+              cliente_id: clienteId,
+              concepto: 'mensualidad',
+              periodo: periodo,
+              monto: mensualidad,
+              fecha_vencimiento: d.toISOString().split('T')[0],
+              estado: 'pendiente'
+            });
+          }
+        }
+      } else {
+        // Anual: 1 cargo por año
+        for (var j = 0; j < Math.ceil(mesesCargos / 12); j++) {
+          var da = new Date(startDate.getFullYear() + j, startDate.getMonth(), corte);
+          cargos.push({
+            cliente_id: clienteId,
+            concepto: 'anualidad',
+            periodo: String(da.getFullYear()),
+            monto: mensualidad,
+            fecha_vencimiento: da.toISOString().split('T')[0],
+            estado: 'pendiente'
+          });
+        }
+      }
+    }
+
+    // 3. Insert cargos in batch
+    if (cargos.length > 0) {
+      var cRes = await sb.from('cargos').insert(cargos);
+      if (cRes.error) console.error('Error inserting cargos:', cRes.error);
+    }
+
+    closeModal();
+    showToast('Cliente "' + nombre + '" creado con ' + cargos.length + ' cargos', 'success');
+
+    // Reload data
+    await loadData();
+
+  } catch (err) {
+    console.error('Error creating client:', err);
+    showToast('Error: ' + (err.message || 'No se pudo crear el cliente'), 'error');
+  }
+}
 
 /* ===== INIT ===== */
 loadData();
