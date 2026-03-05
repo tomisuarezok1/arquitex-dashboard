@@ -2307,6 +2307,12 @@ async function doConfirmarOnboarding(clientId) {
     // Add ficha cierre data if available
     if (cliente.ficha_cierre) {
       Object.assign(body, cliente.ficha_cierre);
+    } else if (fichasData && fichasData.length) {
+      var fichaMatch = fichasData.find(function(f) {
+        var fName = (f.nombre_empresa || f.nombre || '').toLowerCase().trim();
+        return fName === cliente.nombre.toLowerCase().trim();
+      });
+      if (fichaMatch) Object.assign(body, fichaMatch);
     }
 
     // Call webhook
