@@ -1284,6 +1284,112 @@ table { border-collapse: collapse; width: 100%; }
   background-size: 10px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2378716c' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
+
+/* ===== MULTI-FILTER DROPDOWN ===== */
+.multi-filter {
+  position: relative;
+  display: inline-block;
+}
+
+.multi-filter .filter-select {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.multi-filter-arrow {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.multi-filter-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+  padding: 6px 0;
+}
+
+.multi-filter-dropdown.open {
+  display: block;
+}
+
+.multi-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.multi-filter-option:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.multi-filter-option input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* ===== EDITABLE NAME ===== */
+.slideout-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.slideout-title-row .slideout-title {
+  margin-bottom: 0;
+}
+
+.edit-name-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: all var(--duration) var(--ease);
+}
+
+.edit-name-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+
+.edit-name-input {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: 2px 8px;
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary-bg);
+}
 </style>
 </head>
 <body>
@@ -1332,14 +1438,16 @@ table { border-collapse: collapse; width: 100%; }
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="text" id="searchInput" placeholder="Buscar cliente…" autocomplete="off">
         </div>
-        <select class="filter-select" id="filterEstado">
-          <option value="">Todos los estados</option>
-          <option value="activo">Activo</option>
-          <option value="iniciando">Iniciando</option>
-          <option value="pausado">Pausado</option>
-          <option value="caido">Caído</option>
-          <option value="pendiente_pago">Pendiente Pago</option>
-        </select>
+        <div class="multi-filter" id="estadoFilter">
+          <button class="filter-select" onclick="toggleMultiFilter('estadoFilter')" type="button" style="width:100%;text-align:left;">Todos los estados <span class="multi-filter-arrow">▾</span></button>
+          <div class="multi-filter-dropdown" id="estadoFilterDropdown">
+            <label class="multi-filter-option"><input type="checkbox" value="activo" onchange="onEstadoFilterChange()"> Activo</label>
+            <label class="multi-filter-option"><input type="checkbox" value="iniciando" onchange="onEstadoFilterChange()"> Iniciando</label>
+            <label class="multi-filter-option"><input type="checkbox" value="pausado" onchange="onEstadoFilterChange()"> Pausado</label>
+            <label class="multi-filter-option"><input type="checkbox" value="caido" onchange="onEstadoFilterChange()"> Caído</label>
+            <label class="multi-filter-option"><input type="checkbox" value="pendiente_pago" onchange="onEstadoFilterChange()"> Pendiente Pago</label>
+          </div>
+        </div>
         <select class="filter-select" id="filterMetodo">
           <option value="">Todo método</option>
           <option value="debito_automatico">Débito Automático</option>
@@ -1629,6 +1737,11 @@ async function loadData() {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('dashboardContent').style.display = 'block';
     renderKPIs();
+    // Enrich vistaData with fecha_inicio from clientes for sorting
+    vistaData.forEach(function(v) {
+      var c = allClientes.find(function(cl) { return cl.id === v.id; });
+      if (c) v.fecha_inicio = c.fecha_inicio || null;
+    });
     renderTable();
   } catch (err) {
     console.error('Error loading data:', err);
@@ -1666,6 +1779,7 @@ function kpiCard(label, value, cls, sub) {
 var COLUMNS = [
   { key: 'nombre', label: 'Nombre', sortable: true },
   { key: 'estado', label: 'Estado', sortable: true },
+  { key: 'fecha_inicio', label: 'Inicio', sortable: true },
   { key: 'life_time_dias', label: 'Life Time', sortable: true },
   { key: 'saldo', label: 'Saldo', sortable: true, sortKey: 'saldo_vencido' },
   { key: 'proximo_vencimiento', label: 'Próx. Venc.', sortable: true },
@@ -1693,13 +1807,13 @@ function renderTableHead() {
 
 function getFilteredData() {
   var search = document.getElementById('searchInput').value.toLowerCase().trim();
-  var estado = document.getElementById('filterEstado').value;
+  var selectedEstados = getSelectedEstados();
   var metodo = document.getElementById('filterMetodo').value;
   var saldo = document.getElementById('filterSaldo').value;
 
   return vistaData.filter(function(row) {
     if (search && row.nombre.toLowerCase().indexOf(search) === -1) return false;
-    if (estado && row.estado !== estado) return false;
+    if (selectedEstados.length > 0 && selectedEstados.indexOf(row.estado) === -1) return false;
     if (metodo && row.metodo_pago !== metodo) return false;
     if (saldo === 'vencido' && !(parseFloat(row.saldo_vencido) > 0)) return false;
     if (saldo === 'por_vencer' && !(parseFloat(row.saldo_por_vencer_30d) > 0)) return false;
@@ -1774,6 +1888,7 @@ function renderTable() {
     html += '<tr onclick="openFicha(\'' + row.id + '\')">' +
       '<td><div class="client-name">' + escapeHtml(row.nombre) + ' <span class="badge badge-tipo">' + tipoLabel + '</span>' + (hasFicha ? '<span class="ficha-indicator" title="Tiene ficha de cierre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>' : '') + '</div></td>' +
       '<td><span class="badge badge-estado ' + estadoBadgeClass(row.estado) + '">' + estadoLabel(row.estado) + '</span></td>' +
+      '<td class="text-xs">' + (cliente.fecha_inicio ? formatDate(cliente.fecha_inicio) : '—') + '</td>' +
       '<td title="Desde ' + formatDateFull(cliente.created_at) + '">' + daysToText(calcLifeTime(cliente.created_at, row.life_time_dias)) + '</td>' +
       '<td>' +
         (saldoVencido > 0 ? '<div class="saldo-vencido text-xs">Vencido: ' + formatPeso(saldoVencido) + '</div>' : '') +
@@ -1794,7 +1909,6 @@ function renderTable() {
 
 /* ===== FILTERS ===== */
 document.getElementById('searchInput').addEventListener('input', renderTable);
-document.getElementById('filterEstado').addEventListener('change', renderTable);
 document.getElementById('filterMetodo').addEventListener('change', renderTable);
 document.getElementById('filterSaldo').addEventListener('change', renderTable);
 
@@ -1816,7 +1930,10 @@ function openFicha(clientId) {
 
   // Header
   var headerHtml =
-    '<div class="slideout-title">' + escapeHtml(cliente.nombre) + '</div>' +
+    '<div class="slideout-title-row">' +
+      '<div class="slideout-title" id="slideoutClientName">' + escapeHtml(cliente.nombre) + '</div>' +
+      '<button class="edit-name-btn" onclick="startEditName(\'' + clientId + '\')" title="Editar nombre"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button>' +
+    '</div>' +
     '<div class="slideout-badges">' +
       '<select class="estado-select-inline ' + estadoBadgeClass(cliente.estado) + '" onchange="updateEstado(\'' + clientId + '\', this.value)" style="background-color:var(--' + estadoBgVar(cliente.estado) + ')">' +
         ['activo','iniciando','pausado','caido','pendiente_pago'].map(function(e) {
@@ -1843,10 +1960,8 @@ function openFicha(clientId) {
       '</div>' +
     '</div>' +
     '<div class="action-bar">' +
-      '<button class="btn btn-primary" onclick="openRegistrarPagoModal(\'' + clientId + '\')">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Registrar Pago</button>' +
-      '<button class="btn btn-success" onclick="confirmarOnboarding(\'' + clientId + '\')">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Pago Confirmado, Iniciar Onboarding</button>' +
+      '<button class="btn btn-primary" onclick="openRegistrarPagoModal(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Registrar Pago</button>' +
+      '<button class="btn btn-success" onclick="confirmarOnboarding(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Pago Confirmado, Iniciar Onboarding</button>' +
     '</div>';
 
   document.getElementById('slideoutHeader').innerHTML = headerHtml;
@@ -1999,13 +2114,10 @@ function renderPlanPagos(clientId) {
     '<div class="slideout-section-title" style="justify-content:space-between">' +
       '<span>Plan de Pagos (' + cargos.length + ')</span>' +
       '<div style="display:flex;gap:6px;align-items:center;">' +
-        '<button class="btn btn-sm btn-secondary" onclick="openAgregarCargoModal(\'' + clientId + '\')">' +
-          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Agregar</button>' +
+        '<button class="btn btn-sm btn-secondary" onclick="openAgregarCargoModal(\'' + clientId + '\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Agregar</button>' +
         '<div class="plan-toggle">' +
-          '<button class="plan-toggle-btn' + (planView === 'timeline' ? ' active' : '') + '" onclick="setPlanView(\'timeline\',\'' + clientId + '\')">' +
-            'Timeline</button>' +
-          '<button class="plan-toggle-btn' + (planView === 'tabla' ? ' active' : '') + '" onclick="setPlanView(\'tabla\',\'' + clientId + '\')">' +
-            'Tabla</button>' +
+          '<button class="plan-toggle-btn' + (planView === 'timeline' ? ' active' : '') + '" onclick="setPlanView(\'timeline\',\'' + clientId + '\')">Timeline</button>' +
+          '<button class="plan-toggle-btn' + (planView === 'tabla' ? ' active' : '') + '" onclick="setPlanView(\'tabla\',\'' + clientId + '\')">Tabla</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -2021,13 +2133,10 @@ function setPlanView(view, clientId) {
   section.querySelector('.slideout-section-title').innerHTML =
     '<span>Plan de Pagos (' + cargos.length + ')</span>' +
     '<div style="display:flex;gap:6px;align-items:center;">' +
-      '<button class="btn btn-sm btn-secondary" onclick="openAgregarCargoModal(\'' + clientId + '\')">' +
-        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Agregar</button>' +
+      '<button class="btn btn-sm btn-secondary" onclick="openAgregarCargoModal(\'' + clientId + '\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Agregar</button>' +
       '<div class="plan-toggle">' +
-        '<button class="plan-toggle-btn' + (view === 'timeline' ? ' active' : '') + '" onclick="setPlanView(\'timeline\',\'' + clientId + '\')">' +
-          'Timeline</button>' +
-        '<button class="plan-toggle-btn' + (view === 'tabla' ? ' active' : '') + '" onclick="setPlanView(\'tabla\',\'' + clientId + '\')">' +
-          'Tabla</button>' +
+        '<button class="plan-toggle-btn' + (view === 'timeline' ? ' active' : '') + '" onclick="setPlanView(\'timeline\',\'' + clientId + '\')">Timeline</button>' +
+        '<button class="plan-toggle-btn' + (view === 'tabla' ? ' active' : '') + '" onclick="setPlanView(\'tabla\',\'' + clientId + '\')">Tabla</button>' +
       '</div>' +
     '</div>';
   document.getElementById('planContent').innerHTML = (view === 'timeline') ? renderTimeline(cargos, clientId) : renderPlanTable(cargos, clientId);
@@ -2459,7 +2568,7 @@ async function anularCargo(cargoId) {
     '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
     '<div class="modal-body"><p class="text-sm">¿Anular el cargo de <strong>' + conceptoLabel(cargo.concepto) + '</strong> por <strong>' + formatPeso(cargo.monto) + '</strong>?</p><p class="text-xs" style="color:var(--color-text-muted);margin-top:8px;">El cargo no se eliminará, solo se marcará como anulado.</p></div>' +
     '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
-    '<button class="btn btn-danger" onclick="doAnularCargo(\'' + cargoId + '\')" >Anular</button></div>'
+    '<button class="btn btn-danger" onclick="doAnularCargo(\'' + cargoId + '\')">Anular</button></div>'
   );
 }
 
@@ -2495,7 +2604,7 @@ async function confirmarOnboarding(clientId) {
       '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
       '<div class="modal-body"><p class="text-sm">No hay pagos registrados para este cliente. ¿Desea continuar de todas formas?</p></div>' +
       '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
-      '<button class="btn btn-success" onclick="closeModal();doConfirmarOnboarding(\'' + clientId + '\')" >Continuar</button></div>'
+      '<button class="btn btn-success" onclick="closeModal();doConfirmarOnboarding(\'' + clientId + '\')">Continuar</button></div>'
     );
     return;
   }
@@ -2549,6 +2658,82 @@ async function doConfirmarOnboarding(clientId) {
     if (v) v.estado = 'iniciando';
 
     showToast('Onboarding iniciado correctamente', 'success');
+    renderTable();
+    openFicha(clientId);
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+/* ===== MULTI-FILTER ESTADO ===== */
+function getSelectedEstados() {
+  var checkboxes = document.querySelectorAll('#estadoFilterDropdown input[type="checkbox"]:checked');
+  var selected = [];
+  checkboxes.forEach(function(cb) { selected.push(cb.value); });
+  return selected;
+}
+
+function toggleMultiFilter(filterId) {
+  var dropdown = document.getElementById(filterId + 'Dropdown');
+  var isOpen = dropdown.classList.contains('open');
+  // Close all dropdowns first
+  document.querySelectorAll('.multi-filter-dropdown').forEach(function(d) { d.classList.remove('open'); });
+  if (!isOpen) dropdown.classList.add('open');
+}
+
+function onEstadoFilterChange() {
+  var selected = getSelectedEstados();
+  var btn = document.querySelector('#estadoFilter .filter-select');
+  if (selected.length === 0) {
+    btn.innerHTML = 'Todos los estados <span class="multi-filter-arrow">\u25be</span>';
+  } else if (selected.length === 1) {
+    btn.innerHTML = estadoLabel(selected[0]) + ' <span class="multi-filter-arrow">\u25be</span>';
+  } else {
+    btn.innerHTML = selected.length + ' estados <span class="multi-filter-arrow">\u25be</span>';
+  }
+  renderTable();
+}
+
+// Close multi-filter when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.multi-filter')) {
+    document.querySelectorAll('.multi-filter-dropdown').forEach(function(d) { d.classList.remove('open'); });
+  }
+});
+
+/* ===== EDIT CLIENT NAME ===== */
+function startEditName(clientId) {
+  var cliente = allClientes.find(function(c) { return c.id === clientId; });
+  if (!cliente) return;
+  var titleRow = document.querySelector('.slideout-title-row');
+  titleRow.innerHTML =
+    '<input class="edit-name-input" id="editNameInput" type="text" value="' + escapeHtml(cliente.nombre) + '" onkeydown="handleNameKey(event, \'' + clientId + '\')">' +
+    '<button class="btn btn-sm btn-primary" onclick="saveName(\'' + clientId + '\')">Guardar</button>' +
+    '<button class="btn btn-sm btn-ghost" onclick="openFicha(\'' + clientId + '\')">Cancelar</button>';
+  var inp = document.getElementById('editNameInput');
+  inp.focus();
+  inp.select();
+}
+
+function handleNameKey(e, clientId) {
+  if (e.key === 'Enter') { e.preventDefault(); saveName(clientId); }
+  if (e.key === 'Escape') { e.preventDefault(); openFicha(clientId); }
+}
+
+async function saveName(clientId) {
+  var inp = document.getElementById('editNameInput');
+  var newName = (inp ? inp.value : '').trim();
+  if (!newName) { showToast('El nombre no puede estar vacío', 'error'); return; }
+
+  try {
+    var res = await sb.from('clientes').update({ nombre: newName }).eq('id', clientId);
+    if (res.error) throw res.error;
+    // Update local state
+    var c = allClientes.find(function(x) { return x.id === clientId; });
+    if (c) c.nombre = newName;
+    var v = vistaData.find(function(x) { return x.id === clientId; });
+    if (v) v.nombre = newName;
+    showToast('Nombre actualizado', 'success');
     renderTable();
     openFicha(clientId);
   } catch(err) {
