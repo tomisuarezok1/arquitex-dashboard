@@ -1991,6 +1991,7 @@ function openFicha(clientId) {
       '<button class="btn btn-primary" onclick="openRegistrarPagoModal(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Registrar Pago</button>' +
       (shouldShowOnboardingBtn(clientId) ?
         '<button class="btn btn-success" onclick="confirmarOnboarding(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Iniciar Onboarding</button>' : '') +
+      '<button class="btn btn-sm btn-ghost" onclick="eliminarCliente(\'' + clientId + '\')" style="color:var(--color-error);margin-left:auto;" title="Eliminar cliente"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg> Eliminar</button>' +
     '</div>' +
     renderSetupBanner(clientId);
 
@@ -2854,6 +2855,53 @@ async function saveName(clientId) {
     showToast('Nombre actualizado', 'success');
     renderTable();
     openFicha(clientId);
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+/* ===== ELIMINAR CLIENTE ===== */
+function eliminarCliente(clientId) {
+  var cliente = allClientes.find(function(c) { return c.id === clientId; });
+  if (!cliente) return;
+
+  var cargos = allCargos.filter(function(c) { return c.cliente_id === clientId; });
+  var pagos = allPagos.filter(function(p) { return p.cliente_id === clientId; });
+  var warningHtml = '';
+  if (cargos.length > 0 || pagos.length > 0) {
+    warningHtml = '<p class="text-xs" style="color:var(--color-warning);margin-top:8px;">Este cliente tiene ' +
+      (cargos.length > 0 ? cargos.length + ' cargo' + (cargos.length > 1 ? 's' : '') : '') +
+      (cargos.length > 0 && pagos.length > 0 ? ' y ' : '') +
+      (pagos.length > 0 ? pagos.length + ' pago' + (pagos.length > 1 ? 's' : '') : '') +
+      ' que también se eliminarán.</p>';
+  }
+
+  openModal(
+    '<div class="modal-header"><div class="modal-title">Eliminar Cliente</div>' +
+    '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
+    '<div class="modal-body"><p class="text-sm">¿Eliminar a <strong>' + escapeHtml(cliente.nombre) + '</strong>? Esta acción no se puede deshacer.</p>' + warningHtml + '</div>' +
+    '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
+    '<button class="btn btn-danger" onclick="doEliminarCliente(\'' + clientId + '\')">Eliminar</button></div>'
+  );
+}
+
+async function doEliminarCliente(clientId) {
+  try {
+    var res = await sb.from('clientes').delete().eq('id', clientId);
+    if (res.error) throw res.error;
+
+    // Remove from local state
+    allClientes = allClientes.filter(function(c) { return c.id !== clientId; });
+    vistaData = vistaData.filter(function(v) { return v.id !== clientId; });
+    allCargos = allCargos.filter(function(c) { return c.cliente_id !== clientId; });
+    allPagos = allPagos.filter(function(p) { return p.cliente_id !== clientId; });
+
+    closeModal();
+    closeSlideout();
+    selectedClientId = null;
+    showToast('Cliente eliminado', 'success');
+    renderKPIs();
+    renderTable();
   } catch(err) {
     showToast('Error: ' + err.message, 'error');
   }
