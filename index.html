@@ -765,6 +765,34 @@ table { border-collapse: collapse; width: 100%; }
   flex-wrap: wrap;
 }
 
+/* Setup status banners */
+.setup-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 8px;
+}
+.setup-banner-config {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+.setup-banner-pending {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+.setup-banner-ready {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.setup-banner-done {
+  background: var(--color-surface-offset);
+  color: var(--color-text-muted);
+}
+
 /* ===== FORM ===== */
 .form-grid {
   display: grid;
@@ -1961,13 +1989,15 @@ function openFicha(clientId) {
     '</div>' +
     '<div class="action-bar">' +
       '<button class="btn btn-primary" onclick="openRegistrarPagoModal(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Registrar Pago</button>' +
-      '<button class="btn btn-success" onclick="confirmarOnboarding(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Pago Confirmado, Iniciar Onboarding</button>' +
-    '</div>';
+      (shouldShowOnboardingBtn(clientId) ?
+        '<button class="btn btn-success" onclick="confirmarOnboarding(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Iniciar Onboarding</button>' : '') +
+    '</div>' +
+    renderSetupBanner(clientId);
 
   document.getElementById('slideoutHeader').innerHTML = headerHtml;
 
   // Body
-  var bodyHtml = renderDatosCobro(cliente) + renderFichaCierre(cliente) + renderPlanPagos(clientId);
+  var bodyHtml = renderDatosCobro(cliente) + renderFichaCierre(cliente) + renderPlanPagos(clientId) + renderHistorialPagos(clientId);
   document.getElementById('slideoutBody').innerHTML = bodyHtml;
 
   openSlideout();
@@ -2591,25 +2621,113 @@ async function doAnularCargo(cargoId) {
   }
 }
 
+/* ===== SETUP BANNER ===== */
+function renderSetupBanner(clientId) {
+  var setupCargos = allCargos.filter(function(c) {
+    return c.cliente_id === clientId && (c.concepto === 'setup_c1' || c.concepto === 'setup_c2');
+  });
+  if (setupCargos.length === 0) return '';
+
+  var pendientes = setupCargos.filter(function(c) { return c.estado === 'pendiente' || c.estado === 'vencido'; });
+  var pagados = setupCargos.filter(function(c) { return c.estado === 'pagado'; });
+  var cliente = allClientes.find(function(c) { return c.id === clientId; });
+  var onboarded = cliente && cliente.onboarding_ready;
+
+  // All paid
+  if (pendientes.length === 0 && pagados.length > 0) {
+    if (onboarded) {
+      return '<div class="setup-banner setup-banner-done">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>' +
+        ' Setup pagado &middot; Onboarding iniciado' +
+      '</div>';
+    }
+    return '<div class="setup-banner setup-banner-ready">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>' +
+      ' Setup pagado &middot; Listo para iniciar onboarding' +
+    '</div>';
+  }
+
+  // Has unconfigured setup (monto = 0)
+  var unconfigured = pendientes.find(function(c) { return c.monto === 0; });
+  if (unconfigured) {
+    return '<div class="setup-banner setup-banner-config">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>' +
+      ' Configurar monto de Setup en Plan de Pagos antes de registrar el pago' +
+    '</div>';
+  }
+
+  // Has pending setup
+  var totalPendiente = pendientes.reduce(function(sum, c) { return sum + parseFloat(c.monto); }, 0);
+  return '<div class="setup-banner setup-banner-pending">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>' +
+    ' Setup pendiente: ' + formatPeso(totalPendiente) +
+    ' (' + pendientes.length + (pendientes.length === 1 ? ' cuota' : ' cuotas') + ')' +
+  '</div>';
+}
+
+/* ===== SHOULD SHOW ONBOARDING BUTTON ===== */
+function shouldShowOnboardingBtn(clientId) {
+  var cliente = allClientes.find(function(c) { return c.id === clientId; });
+  if (!cliente) return false;
+  // Don't show if already onboarded
+  if (cliente.onboarding_ready) return false;
+  // Find setup cargos
+  var setupCargos = allCargos.filter(function(c) {
+    return c.cliente_id === clientId && (c.concepto === 'setup_c1' || c.concepto === 'setup_c2');
+  });
+  // If no setup cargos exist yet, don't show (client just entered, setup not configured)
+  if (setupCargos.length === 0) return false;
+  // Check all setup cargos are paid or anulado
+  var allSetupResolved = setupCargos.every(function(c) {
+    return c.estado === 'pagado' || c.estado === 'anulado';
+  });
+  return allSetupResolved;
+}
+
+/* ===== HISTORIAL DE PAGOS ===== */
+function renderHistorialPagos(clientId) {
+  var clientePagos = allPagos.filter(function(p) { return p.cliente_id === clientId; });
+  if (clientePagos.length === 0) return '';
+
+  var html = '<div class="slideout-section">' +
+    '<div class="slideout-section-title">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-success)"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' +
+      ' Historial de Pagos (' + clientePagos.length + ')' +
+    '</div>' +
+    '<div class="table-container" style="border:none;"><div class="table-scroll"><table class="plan-table"><thead><tr>' +
+    '<th>Fecha</th><th>Monto</th><th>Método</th><th>Concepto</th><th>Nota</th>' +
+    '</tr></thead><tbody>';
+
+  clientePagos.forEach(function(pago) {
+    var cargo = pago.cargo_id ? allCargos.find(function(c) { return c.id === pago.cargo_id; }) : null;
+    var conceptoStr = cargo ? conceptoLabel(cargo.concepto) : '<span style="color:var(--color-text-muted)">Sin cargo</span>';
+
+    html += '<tr>' +
+      '<td>' + formatDate(pago.fecha_pago) + '</td>' +
+      '<td style="font-weight:600">' + formatPeso(pago.monto) + '</td>' +
+      '<td>' + metodoLabel(pago.metodo) + '</td>' +
+      '<td>' + conceptoStr + '</td>' +
+      '<td class="text-xs">' + (pago.nota ? escapeHtml(pago.nota) : '—') + '</td>' +
+    '</tr>';
+  });
+
+  html += '</tbody></table></div></div></div>';
+  return html;
+}
+
 /* ===== CONFIRMAR ONBOARDING ===== */
 async function confirmarOnboarding(clientId) {
   var cliente = allClientes.find(function(c) { return c.id === clientId; });
   if (!cliente) return;
 
-  // Check for at least 1 pago
-  var clientePagos = allPagos.filter(function(p) { return p.cliente_id === clientId; });
-  if (clientePagos.length === 0) {
-    openModal(
-      '<div class="modal-header"><div class="modal-title">⚠ Sin pagos registrados</div>' +
-      '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
-      '<div class="modal-body"><p class="text-sm">No hay pagos registrados para este cliente. ¿Desea continuar de todas formas?</p></div>' +
-      '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
-      '<button class="btn btn-success" onclick="closeModal();doConfirmarOnboarding(\'' + clientId + '\')">Continuar</button></div>'
-    );
-    return;
-  }
-
-  doConfirmarOnboarding(clientId);
+  // Confirmation dialog
+  openModal(
+    '<div class="modal-header"><div class="modal-title">Iniciar Onboarding</div>' +
+    '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
+    '<div class="modal-body"><p class="text-sm">Se creará el proyecto en Basecamp y la carpeta en Google Drive para <strong>' + escapeHtml(cliente.nombre) + '</strong>.</p><p class="text-xs" style="color:var(--color-text-muted);margin-top:8px;">Esta acción no se puede deshacer.</p></div>' +
+    '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
+    '<button class="btn btn-success" onclick="closeModal();doConfirmarOnboarding(\'' + clientId + '\')">Confirmar e Iniciar</button></div>'
+  );
 }
 
 async function doConfirmarOnboarding(clientId) {
