@@ -23,7 +23,7 @@
 <title>Arquitex — CRM de Cobros</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -58,28 +58,29 @@ table { border-collapse: collapse; width: 100%; }
 /* ===== DESIGN TOKENS ===== */
 :root, [data-theme="light"] {
   --font-body: 'Inter', system-ui, sans-serif;
+  --font-logo: 'Sora', 'Inter', system-ui, sans-serif;
 
   /* Surfaces */
-  --color-bg: #f5f5f4;
+  --color-bg: #f5f5f0;
   --color-surface: #ffffff;
-  --color-surface-2: #fafaf9;
-  --color-surface-offset: #f0efed;
-  --color-surface-hover: #e7e5e4;
-  --color-divider: #e0dfdc;
-  --color-border: #d4d3d0;
+  --color-surface-2: #fafaf5;
+  --color-surface-offset: #f0f0eb;
+  --color-surface-hover: #e8e8e3;
+  --color-divider: #e0e0db;
+  --color-border: #d5d5d0;
 
   /* Text */
-  --color-text: #1c1917;
-  --color-text-secondary: #57534e;
-  --color-text-muted: #a8a29e;
-  --color-text-inverse: #fafaf9;
+  --color-text: #1a1a1a;
+  --color-text-secondary: #555555;
+  --color-text-muted: #999999;
+  --color-text-inverse: #ffffff;
 
-  /* Primary (Teal) */
-  --color-primary: #0d9488;
-  --color-primary-hover: #0f766e;
-  --color-primary-active: #115e59;
-  --color-primary-bg: #ccfbf1;
-  --color-primary-bg-subtle: #f0fdfa;
+  /* Primary (Gold) */
+  --color-primary: #d49500;
+  --color-primary-hover: #b88000;
+  --color-primary-active: #986801;
+  --color-primary-bg: #fef6e0;
+  --color-primary-bg-subtle: #fffcf5;
 
   /* Semantic */
   --color-success: #16a34a;
@@ -128,24 +129,24 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 [data-theme="dark"] {
-  --color-bg: #0c0a09;
-  --color-surface: #1c1917;
-  --color-surface-2: #292524;
-  --color-surface-offset: #1a1918;
-  --color-surface-hover: #44403c;
-  --color-divider: #292524;
-  --color-border: #3f3c38;
+  --color-bg: #000000;
+  --color-surface: #131313;
+  --color-surface-2: #1a1a1a;
+  --color-surface-offset: #0d0d0d;
+  --color-surface-hover: #252525;
+  --color-divider: #1f1f1f;
+  --color-border: #2a2a2a;
 
-  --color-text: #e7e5e4;
-  --color-text-secondary: #a8a29e;
-  --color-text-muted: #78716c;
-  --color-text-inverse: #1c1917;
+  --color-text: #f0f0f0;
+  --color-text-secondary: #a6a6a6;
+  --color-text-muted: #727272;
+  --color-text-inverse: #000000;
 
-  --color-primary: #2dd4bf;
-  --color-primary-hover: #14b8a6;
-  --color-primary-active: #0d9488;
-  --color-primary-bg: rgba(45,212,191,0.12);
-  --color-primary-bg-subtle: rgba(45,212,191,0.06);
+  --color-primary: #FEAE02;
+  --color-primary-hover: #e69d02;
+  --color-primary-active: #986801;
+  --color-primary-bg: rgba(254,174,2,0.12);
+  --color-primary-bg-subtle: rgba(254,174,2,0.06);
 
   --color-success: #4ade80;
   --color-success-bg: rgba(74,222,128,0.12);
@@ -173,27 +174,27 @@ table { border-collapse: collapse; width: 100%; }
   --shadow-xl: 0 20px 48px rgba(0,0,0,0.6);
 
   --overlay-bg: rgba(0,0,0,0.6);
-  --scrollbar-thumb: #44403c;
+  --scrollbar-thumb: #333333;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --color-bg: #0c0a09;
-    --color-surface: #1c1917;
-    --color-surface-2: #292524;
-    --color-surface-offset: #1a1918;
-    --color-surface-hover: #44403c;
-    --color-divider: #292524;
-    --color-border: #3f3c38;
-    --color-text: #e7e5e4;
-    --color-text-secondary: #a8a29e;
-    --color-text-muted: #78716c;
-    --color-text-inverse: #1c1917;
-    --color-primary: #2dd4bf;
-    --color-primary-hover: #14b8a6;
-    --color-primary-active: #0d9488;
-    --color-primary-bg: rgba(45,212,191,0.12);
-    --color-primary-bg-subtle: rgba(45,212,191,0.06);
+    --color-bg: #000000;
+    --color-surface: #131313;
+    --color-surface-2: #1a1a1a;
+    --color-surface-offset: #0d0d0d;
+    --color-surface-hover: #252525;
+    --color-divider: #1f1f1f;
+    --color-border: #2a2a2a;
+    --color-text: #f0f0f0;
+    --color-text-secondary: #a6a6a6;
+    --color-text-muted: #727272;
+    --color-text-inverse: #000000;
+    --color-primary: #FEAE02;
+    --color-primary-hover: #e69d02;
+    --color-primary-active: #986801;
+    --color-primary-bg: rgba(254,174,2,0.12);
+    --color-primary-bg-subtle: rgba(254,174,2,0.06);
     --color-success: #4ade80;
     --color-success-bg: rgba(74,222,128,0.12);
     --color-warning: #fbbf24;
@@ -217,7 +218,7 @@ table { border-collapse: collapse; width: 100%; }
     --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
     --shadow-xl: 0 20px 48px rgba(0,0,0,0.6);
     --overlay-bg: rgba(0,0,0,0.6);
-    --scrollbar-thumb: #44403c;
+    --scrollbar-thumb: #333333;
   }
 }
 
@@ -278,13 +279,15 @@ table { border-collapse: collapse; width: 100%; }
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-family: var(--font-logo, 'Sora', sans-serif);
+  font-size: 16px;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--color-text);
 }
 
 .logo svg { flex-shrink: 0; }
+[data-theme="dark"] .logo svg { color: #FEAE02; }
 
 .logo-divider {
   width: 1px;
@@ -337,11 +340,12 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 .btn-primary {
-  background: var(--color-primary);
-  color: #fff;
+  background: linear-gradient(90deg, #FEAE02, #986801);
+  color: #000;
+  font-weight: 600;
 }
-.btn-primary:hover { background: var(--color-primary-hover); }
-.btn-primary:active { background: var(--color-primary-active); }
+.btn-primary:hover { background: linear-gradient(90deg, #ffc030, #a87510); }
+.btn-primary:active { background: linear-gradient(90deg, #e69d02, #7a5500); }
 
 .btn-secondary {
   background: var(--color-surface);
@@ -1121,6 +1125,107 @@ table { border-collapse: collapse; width: 100%; }
   word-break: break-word;
 }
 
+
+/* ===== FICHA INDICATOR IN TABLE ===== */
+.ficha-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.ficha-indicator svg { width: 10px; height: 10px; }
+
+/* ===== FICHA CIERRE CARD (in slideout) ===== */
+.ficha-cierre-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary-bg);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.ficha-cierre-card .ficha-cierre-grid {
+  margin-bottom: 12px;
+}
+
+.ficha-cierre-card .ficha-cierre-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ficha-cierre-card .ficha-cierre-header svg {
+  color: var(--color-primary);
+}
+
+.ficha-cierre-card .ficha-cierre-header span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ===== FICHA PREVIEW MODAL ===== */
+.ficha-modal {
+  width: min(680px, 92vw);
+}
+
+.ficha-modal-body {
+  padding: 20px 24px;
+}
+
+.ficha-modal-section {
+  margin-bottom: 20px;
+}
+
+.ficha-modal-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-primary);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.ficha-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+
+.ficha-modal-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ficha-modal-item.full {
+  grid-column: 1 / -1;
+}
+
+.ficha-modal-item-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ficha-modal-item-value {
+  font-size: 14px;
+  color: var(--color-text);
+  word-break: break-word;
+  line-height: 1.5;
+}
+
 /* ===== FOOTER ===== */
 .app-footer {
   padding: 8px 24px;
@@ -1316,7 +1421,7 @@ let vistaData = [];
 let fichasData = [];
 let currentSort = { col: 'saldo_vencido', dir: 'desc' };
 let selectedClientId = null;
-let currentTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+let currentTheme = 'dark';
 
 /* ===== THEME ===== */
 document.documentElement.setAttribute('data-theme', currentTheme);
@@ -1464,6 +1569,7 @@ function openModal(html, wide) {
   var modal = document.getElementById('modalContent');
   modal.innerHTML = html;
   modal.classList.toggle('modal-wide', !!wide);
+  modal.classList.remove('ficha-modal');
   document.getElementById('modalOverlay').classList.add('open');
 }
 
@@ -1664,8 +1770,9 @@ function renderTable() {
     var obs = cliente.observaciones || cliente.next_step_text || '';
     var obsShort = obs.length > 80 ? obs.substring(0, 80) + '…' : obs;
 
+    var hasFicha = clientHasFicha(cliente);
     html += '<tr onclick="openFicha(\'' + row.id + '\')">' +
-      '<td><div class="client-name">' + escapeHtml(row.nombre) + ' <span class="badge badge-tipo">' + tipoLabel + '</span></div></td>' +
+      '<td><div class="client-name">' + escapeHtml(row.nombre) + ' <span class="badge badge-tipo">' + tipoLabel + '</span>' + (hasFicha ? '<span class="ficha-indicator" title="Tiene ficha de cierre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>' : '') + '</div></td>' +
       '<td><span class="badge badge-estado ' + estadoBadgeClass(row.estado) + '">' + estadoLabel(row.estado) + '</span></td>' +
       '<td title="Desde ' + formatDateFull(cliente.created_at) + '">' + daysToText(calcLifeTime(cliente.created_at, row.life_time_dias)) + '</td>' +
       '<td>' +
@@ -1736,14 +1843,16 @@ function openFicha(clientId) {
       '</div>' +
     '</div>' +
     '<div class="action-bar">' +
-      '<button class="btn btn-primary" onclick="openRegistrarPagoModal(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Registrar Pago</button>' +
-      '<button class="btn btn-success" onclick="confirmarOnboarding(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Pago Confirmado, Iniciar Onboarding</button>' +
+      '<button class="btn btn-primary" onclick="openRegistrarPagoModal(\'' + clientId + '\')">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Registrar Pago</button>' +
+      '<button class="btn btn-success" onclick="confirmarOnboarding(\'' + clientId + '\')">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Pago Confirmado, Iniciar Onboarding</button>' +
     '</div>';
 
   document.getElementById('slideoutHeader').innerHTML = headerHtml;
 
   // Body
-  var bodyHtml = renderDatosCobro(cliente) + renderPlanPagos(clientId) + renderFichaCierre(cliente);
+  var bodyHtml = renderDatosCobro(cliente) + renderFichaCierre(cliente) + renderPlanPagos(clientId);
   document.getElementById('slideoutBody').innerHTML = bodyHtml;
 
   openSlideout();
@@ -1890,10 +1999,13 @@ function renderPlanPagos(clientId) {
     '<div class="slideout-section-title" style="justify-content:space-between">' +
       '<span>Plan de Pagos (' + cargos.length + ')</span>' +
       '<div style="display:flex;gap:6px;align-items:center;">' +
-        '<button class="btn btn-sm btn-secondary" onclick="openAgregarCargoModal(\'' + clientId + '\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Agregar</button>' +
+        '<button class="btn btn-sm btn-secondary" onclick="openAgregarCargoModal(\'' + clientId + '\')">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Agregar</button>' +
         '<div class="plan-toggle">' +
-          '<button class="plan-toggle-btn' + (planView === 'timeline' ? ' active' : '') + '" onclick="setPlanView(\'timeline\',\'' + clientId + '\')">Timeline</button>' +
-          '<button class="plan-toggle-btn' + (planView === 'tabla' ? ' active' : '') + '" onclick="setPlanView(\'tabla\',\'' + clientId + '\')">Tabla</button>' +
+          '<button class="plan-toggle-btn' + (planView === 'timeline' ? ' active' : '') + '" onclick="setPlanView(\'timeline\',\'' + clientId + '\')">' +
+            'Timeline</button>' +
+          '<button class="plan-toggle-btn' + (planView === 'tabla' ? ' active' : '') + '" onclick="setPlanView(\'tabla\',\'' + clientId + '\')">' +
+            'Tabla</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -1909,10 +2021,13 @@ function setPlanView(view, clientId) {
   section.querySelector('.slideout-section-title').innerHTML =
     '<span>Plan de Pagos (' + cargos.length + ')</span>' +
     '<div style="display:flex;gap:6px;align-items:center;">' +
-      '<button class="btn btn-sm btn-secondary" onclick="openAgregarCargoModal(\'' + clientId + '\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Agregar</button>' +
+      '<button class="btn btn-sm btn-secondary" onclick="openAgregarCargoModal(\'' + clientId + '\')">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Agregar</button>' +
       '<div class="plan-toggle">' +
-        '<button class="plan-toggle-btn' + (view === 'timeline' ? ' active' : '') + '" onclick="setPlanView(\'timeline\',\'' + clientId + '\')">Timeline</button>' +
-        '<button class="plan-toggle-btn' + (view === 'tabla' ? ' active' : '') + '" onclick="setPlanView(\'tabla\',\'' + clientId + '\')">Tabla</button>' +
+        '<button class="plan-toggle-btn' + (view === 'timeline' ? ' active' : '') + '" onclick="setPlanView(\'timeline\',\'' + clientId + '\')">' +
+          'Timeline</button>' +
+        '<button class="plan-toggle-btn' + (view === 'tabla' ? ' active' : '') + '" onclick="setPlanView(\'tabla\',\'' + clientId + '\')">' +
+          'Tabla</button>' +
       '</div>' +
     '</div>';
   document.getElementById('planContent').innerHTML = (view === 'timeline') ? renderTimeline(cargos, clientId) : renderPlanTable(cargos, clientId);
@@ -1992,60 +2107,147 @@ function renderPlanTable(cargos, clientId) {
 
 /* ===== FICHA DE CIERRE ===== */
 function renderFichaCierre(cliente) {
-  var ficha = cliente.ficha_cierre;
-  // Also try fichasData
-  if (!ficha && fichasData && fichasData.length) {
-    var match = fichasData.find(function(f) {
-      return f.nombre_empresa && cliente.nombre &&
-        (f.nombre_empresa.toLowerCase().indexOf(cliente.nombre.toLowerCase()) !== -1 ||
-         cliente.nombre.toLowerCase().indexOf(f.nombre_empresa.toLowerCase()) !== -1);
-    });
-    if (match) ficha = match;
-  }
-
+  var ficha = getClientFicha(cliente);
   if (!ficha) return '';
 
-  var fields = [
+  // Show a compact preview: up to 4 key fields
+  var previewFields = [
     { key: 'nombre_empresa', label: 'Empresa' },
-    { key: 'personas_involucradas', label: 'Personas' },
-    { key: 'tipo_empresa', label: 'Tipo Empresa' },
-    { key: 'donde_opera', label: 'Donde Opera' },
-    { key: 'links', label: 'Links', full: true },
-    { key: 'plan_contratado', label: 'Plan Contratado' },
+    { key: 'plan_contratado', label: 'Plan' },
     { key: 'precio', label: 'Precio' },
-    { key: 'forma_pago', label: 'Forma de Pago' },
-    { key: 'notas', label: 'Notas', full: true }
+    { key: 'tipo_empresa', label: 'Tipo' }
   ];
 
   var html = '<div class="slideout-section">' +
-    '<div class="slideout-section-title">Ficha de Cierre</div>' +
-    '<div class="ficha-cierre-grid">';
+    '<div class="slideout-section-title">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-primary)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' +
+      ' Ficha de Cierre' +
+    '</div>' +
+    '<div class="ficha-cierre-card">' +
+      '<div class="ficha-cierre-grid">';
 
-  fields.forEach(function(f) {
+  previewFields.forEach(function(f) {
     var val = ficha[f.key];
     if (val == null || val === '') return;
     if (typeof val === 'object') val = JSON.stringify(val);
-    html += '<div class="ficha-cierre-item' + (f.full ? ' full' : '') + '">' +
+    html += '<div class="ficha-cierre-item">' +
       '<div class="ficha-cierre-label">' + f.label + '</div>' +
       '<div class="ficha-cierre-value">' + escapeHtml(String(val)) + '</div>' +
     '</div>';
   });
 
-  // Render all other keys
+  html += '</div>' +
+    '<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openFichaPreview(\'' + cliente.id + '\')" style="margin-top:8px;">' +
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+      ' Ver Ficha Completa' +
+    '</button>' +
+  '</div></div>';
+
+  return html;
+}
+
+
+/* ===== FICHA HELPERS ===== */
+function clientHasFicha(cliente) {
+  if (cliente.ficha_cierre) return true;
+  if (fichasData && fichasData.length) {
+    var match = fichasData.find(function(f) {
+      return f.nombre_empresa && cliente.nombre &&
+        (f.nombre_empresa.toLowerCase().indexOf(cliente.nombre.toLowerCase()) !== -1 ||
+         cliente.nombre.toLowerCase().indexOf(f.nombre_empresa.toLowerCase()) !== -1);
+    });
+    if (match) return true;
+  }
+  return false;
+}
+
+function getClientFicha(cliente) {
+  if (cliente.ficha_cierre) return cliente.ficha_cierre;
+  if (fichasData && fichasData.length) {
+    var match = fichasData.find(function(f) {
+      return f.nombre_empresa && cliente.nombre &&
+        (f.nombre_empresa.toLowerCase().indexOf(cliente.nombre.toLowerCase()) !== -1 ||
+         cliente.nombre.toLowerCase().indexOf(f.nombre_empresa.toLowerCase()) !== -1);
+    });
+    if (match) return match;
+  }
+  return null;
+}
+
+function openFichaPreview(clientId) {
+  var cliente = allClientes.find(function(c) { return c.id === clientId; });
+  if (!cliente) return;
+  var ficha = getClientFicha(cliente);
+  if (!ficha) return;
+
+  var knownFields = [
+    { key: 'nombre_empresa', label: 'Empresa', section: 'info' },
+    { key: 'personas_involucradas', label: 'Personas Involucradas', section: 'info' },
+    { key: 'tipo_empresa', label: 'Tipo Empresa', section: 'info' },
+    { key: 'donde_opera', label: 'Donde Opera', section: 'info' },
+    { key: 'links', label: 'Links', section: 'info', full: true },
+    { key: 'plan_contratado', label: 'Plan Contratado', section: 'contrato' },
+    { key: 'precio', label: 'Precio', section: 'contrato' },
+    { key: 'forma_pago', label: 'Forma de Pago', section: 'contrato' },
+    { key: 'notas', label: 'Notas', section: 'notas', full: true }
+  ];
+
+  var sections = { info: 'Información de la Empresa', contrato: 'Datos del Contrato', notas: 'Notas' };
+  var sectionContent = { info: '', contrato: '', notas: '' };
+  var extraContent = '';
+
+  knownFields.forEach(function(f) {
+    var val = ficha[f.key];
+    if (val == null || val === '') return;
+    if (typeof val === 'object') val = JSON.stringify(val);
+    sectionContent[f.section] += '<div class="ficha-modal-item' + (f.full ? ' full' : '') + '">' +
+      '<div class="ficha-modal-item-label">' + f.label + '</div>' +
+      '<div class="ficha-modal-item-value">' + escapeHtml(String(val)) + '</div>' +
+    '</div>';
+  });
+
+  // Extra fields
   Object.keys(ficha).forEach(function(key) {
-    if (fields.some(function(f) { return f.key === key; })) return;
+    if (knownFields.some(function(f) { return f.key === key; })) return;
     if (key === 'id' || key === 'created_at' || key === 'updated_at') return;
     var val = ficha[key];
     if (val == null || val === '') return;
     if (typeof val === 'object') val = JSON.stringify(val);
-    html += '<div class="ficha-cierre-item">' +
-      '<div class="ficha-cierre-label">' + key.replace(/_/g, ' ') + '</div>' +
-      '<div class="ficha-cierre-value">' + escapeHtml(String(val)) + '</div>' +
+    extraContent += '<div class="ficha-modal-item">' +
+      '<div class="ficha-modal-item-label">' + key.replace(/_/g, ' ') + '</div>' +
+      '<div class="ficha-modal-item-value">' + escapeHtml(String(val)) + '</div>' +
     '</div>';
   });
 
-  html += '</div></div>';
-  return html;
+  var modalHtml = '<div class="modal-header">' +
+    '<div class="modal-title">Ficha de Cierre — ' + escapeHtml(cliente.nombre) + '</div>' +
+    '<button class="icon-btn" onclick="closeModal()" aria-label="Cerrar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>' +
+  '</div>' +
+  '<div class="ficha-modal-body">';
+
+  Object.keys(sections).forEach(function(sKey) {
+    if (!sectionContent[sKey]) return;
+    modalHtml += '<div class="ficha-modal-section">' +
+      '<div class="ficha-modal-section-title">' + sections[sKey] + '</div>' +
+      '<div class="ficha-modal-grid">' + sectionContent[sKey] + '</div>' +
+    '</div>';
+  });
+
+  if (extraContent) {
+    modalHtml += '<div class="ficha-modal-section">' +
+      '<div class="ficha-modal-section-title">Otros Datos</div>' +
+      '<div class="ficha-modal-grid">' + extraContent + '</div>' +
+    '</div>';
+  }
+
+  modalHtml += '</div>' +
+    '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cerrar</button></div>';
+
+  var modal = document.getElementById('modalContent');
+  modal.innerHTML = modalHtml;
+  modal.classList.add('ficha-modal');
+  modal.classList.remove('modal-wide');
+  document.getElementById('modalOverlay').classList.add('open');
 }
 
 /* ===== REGISTRAR PAGO MODAL ===== */
@@ -2257,7 +2459,7 @@ async function anularCargo(cargoId) {
     '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
     '<div class="modal-body"><p class="text-sm">¿Anular el cargo de <strong>' + conceptoLabel(cargo.concepto) + '</strong> por <strong>' + formatPeso(cargo.monto) + '</strong>?</p><p class="text-xs" style="color:var(--color-text-muted);margin-top:8px;">El cargo no se eliminará, solo se marcará como anulado.</p></div>' +
     '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
-    '<button class="btn btn-danger" onclick="doAnularCargo(\'' + cargoId + '\')">Anular</button></div>'
+    '<button class="btn btn-danger" onclick="doAnularCargo(\'' + cargoId + '\')" >Anular</button></div>'
   );
 }
 
@@ -2293,7 +2495,7 @@ async function confirmarOnboarding(clientId) {
       '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
       '<div class="modal-body"><p class="text-sm">No hay pagos registrados para este cliente. ¿Desea continuar de todas formas?</p></div>' +
       '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
-      '<button class="btn btn-success" onclick="closeModal();doConfirmarOnboarding(\'' + clientId + '\')">Continuar</button></div>'
+      '<button class="btn btn-success" onclick="closeModal();doConfirmarOnboarding(\'' + clientId + '\')" >Continuar</button></div>'
     );
     return;
   }
