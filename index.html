@@ -2210,6 +2210,7 @@ function renderTimeline(cargos, clientId) {
         '<div class="timeline-card-right">' +
           '<div class="timeline-card-monto">' + formatPeso(cargo.monto) + '</div>' +
           '<span class="badge ' + cargoEstadoBadgeClass(cargo.estado) + '">' + cargoEstadoLabel(cargo.estado) + '</span>' +
+          '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openEditCargoModal(\'' + cargo.id + '\')" title="Editar">✎</button>' +
           (cargo.estado !== 'anulado' && cargo.estado !== 'pagado' ?
             '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openRegistrarPagoCargoModal(\'' + clientId + '\',\'' + cargo.id + '\')" title="Registrar pago">$</button>' : '') +
         '</div>' +
@@ -2548,6 +2549,11 @@ function openEditCargoModal(cargoId) {
       formField('Monto', 'number', 'monto', cargo.monto) +
       formField('Vencimiento', 'date', 'fecha_vencimiento', cargo.fecha_vencimiento) +
       formField('Nota', 'text', 'nota', cargo.nota || '', true) +
+      '<div class="form-group"><label class="form-label">Estado</label><select class="form-select" name="estado">' +
+        ['pendiente','pagado','vencido','anulado'].map(function(e) {
+          return '<option value="' + e + '"' + (cargo.estado === e ? ' selected' : '') + '>' + cargoEstadoLabel(e) + '</option>';
+        }).join('') +
+      '</select></div>' +
     '</div></form>' +
     '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="this.closest(\'.modal\').querySelector(\'form\').requestSubmit()">Guardar</button></div>';
@@ -2563,7 +2569,8 @@ async function submitEditCargo(e, cargoId) {
     periodo: fd.get('periodo') || null,
     monto: parseFloat(fd.get('monto')),
     fecha_vencimiento: fd.get('fecha_vencimiento'),
-    nota: fd.get('nota') || null
+    nota: fd.get('nota') || null,
+    estado: fd.get('estado')
   };
 
   try {
@@ -2573,6 +2580,11 @@ async function submitEditCargo(e, cargoId) {
     if (cargo) Object.assign(cargo, data);
     closeModal();
     showToast('Cargo actualizado', 'success');
+    // Refresh vista saldo after estado change
+    var vistaRes = await sb.from('vista_saldo_clientes').select('*');
+    if (!vistaRes.error) vistaData = vistaRes.data || [];
+    renderKPIs();
+    renderTable();
     if (selectedClientId) openFicha(selectedClientId);
   } catch(err) {
     showToast('Error: ' + err.message, 'error');
