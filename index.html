@@ -1579,13 +1579,15 @@ function formatPeso(n) {
 
 function formatDate(d) {
   if (!d) return '—';
-  const dt = new Date(d + 'T12:00:00');
+  var dateStr = String(d).includes('T') ? String(d).split('T')[0] : d;
+  const dt = new Date(dateStr + 'T12:00:00');
   return dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 function formatDateFull(d) {
   if (!d) return '—';
-  const dt = new Date(d + 'T12:00:00');
+  var dateStr = String(d).includes('T') ? String(d).split('T')[0] : d;
+  const dt = new Date(dateStr + 'T12:00:00');
   return dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
