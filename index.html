@@ -1555,7 +1555,7 @@ let allCargos = [];
 let allPagos = [];
 let vistaData = [];
 let fichasData = [];
-let currentSort = { col: 'saldo_vencido', dir: 'desc' };
+let currentSort = { col: 'created_at', dir: 'desc' };
 let selectedClientId = null;
 let currentTheme = 'dark';
 
@@ -1774,6 +1774,7 @@ async function loadData() {
           c.fecha_inicio = c.ficha_cierre.fecha_inicio_mensualidad;
         }
         v.fecha_inicio = c.fecha_inicio || null;
+        v.created_at = c.created_at || null;
       }
     });
     renderTable();
@@ -1813,6 +1814,7 @@ function kpiCard(label, value, cls, sub) {
 var COLUMNS = [
   { key: 'nombre', label: 'Nombre', sortable: true },
   { key: 'estado', label: 'Estado', sortable: true },
+  { key: 'created_at', label: 'Fecha Creación', sortable: true },
   { key: 'fecha_inicio', label: 'Inicio', sortable: true },
   { key: 'life_time_dias', label: 'Life Time', sortable: true },
   { key: 'saldo', label: 'Saldo', sortable: true, sortKey: 'saldo_vencido' },
@@ -1859,15 +1861,21 @@ function getFilteredData() {
 function sortData(data) {
   var col = currentSort.col;
   var dir = currentSort.dir === 'asc' ? 1 : -1;
+  var isDateCol = (col === 'created_at' || col === 'fecha_inicio' || col === 'proximo_vencimiento');
   return data.slice().sort(function(a, b) {
     var va = a[col], vb = b[col];
     if (va == null) va = '';
     if (vb == null) vb = '';
-    if (typeof va === 'string') va = va.toLowerCase();
-    if (typeof vb === 'string') vb = vb.toLowerCase();
-    if (typeof va === 'number' || !isNaN(parseFloat(va))) {
-      va = parseFloat(va) || 0;
-      vb = parseFloat(vb) || 0;
+    if (isDateCol) {
+      va = va ? new Date(va).getTime() : 0;
+      vb = vb ? new Date(vb).getTime() : 0;
+    } else {
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (typeof va === 'number' || !isNaN(parseFloat(va))) {
+        va = parseFloat(va) || 0;
+        vb = parseFloat(vb) || 0;
+      }
     }
     if (va < vb) return -1 * dir;
     if (va > vb) return 1 * dir;
@@ -1922,6 +1930,7 @@ function renderTable() {
     html += '<tr onclick="openFicha(\'' + row.id + '\')">' +
       '<td><div class="client-name">' + escapeHtml(row.nombre) + ' <span class="badge badge-tipo">' + tipoLabel + '</span>' + (hasFicha ? '<span class="ficha-indicator" title="Tiene ficha de cierre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>' : '') + '</div></td>' +
       '<td><span class="badge badge-estado ' + estadoBadgeClass(row.estado) + '">' + estadoLabel(row.estado) + '</span></td>' +
+      '<td class="text-xs">' + (cliente.created_at ? formatDate(cliente.created_at) : '—') + '</td>' +
       '<td class="text-xs">' + (cliente.fecha_inicio ? formatDate(cliente.fecha_inicio) : '—') + '</td>' +
       '<td title="Desde ' + formatDateFull(cliente.created_at) + '">' + daysToText(calcLifeTime(cliente.created_at, row.life_time_dias)) + '</td>' +
       '<td>' +
