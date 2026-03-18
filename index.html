@@ -1766,9 +1766,15 @@ async function loadData() {
     document.getElementById('dashboardContent').style.display = 'block';
     renderKPIs();
     // Enrich vistaData with fecha_inicio from clientes for sorting
+    // Auto-populate fecha_inicio from ficha_cierre.fecha_inicio_mensualidad if missing
     vistaData.forEach(function(v) {
       var c = allClientes.find(function(cl) { return cl.id === v.id; });
-      if (c) v.fecha_inicio = c.fecha_inicio || null;
+      if (c) {
+        if (!c.fecha_inicio && c.ficha_cierre && c.ficha_cierre.fecha_inicio_mensualidad) {
+          c.fecha_inicio = c.ficha_cierre.fecha_inicio_mensualidad;
+        }
+        v.fecha_inicio = c.fecha_inicio || null;
+      }
     });
     renderTable();
   } catch (err) {
@@ -2322,13 +2328,18 @@ function openFichaPreview(clientId) {
 
   var knownFields = [
     { key: 'nombre_empresa', label: 'Empresa', section: 'info' },
-    { key: 'personas_involucradas', label: 'Personas Involucradas', section: 'info' },
+    { key: 'responsables_pago_contrato', label: 'Responsables del Pago y Contrato', section: 'info', full: true },
     { key: 'tipo_empresa', label: 'Tipo Empresa', section: 'info' },
     { key: 'donde_opera', label: 'Donde Opera', section: 'info' },
+    { key: 'equipo_diseno', label: 'Equipo de Diseño/CM', section: 'info' },
     { key: 'links', label: 'Links', section: 'info', full: true },
     { key: 'plan_contratado', label: 'Plan Contratado', section: 'contrato' },
     { key: 'precio', label: 'Precio', section: 'contrato' },
     { key: 'forma_pago', label: 'Forma de Pago', section: 'contrato' },
+    { key: 'presupuesto_extra', label: 'Presupuesto Extra', section: 'contrato' },
+    { key: 'negociacion_setup', label: 'Negociación Setup', section: 'contrato', full: true },
+    { key: 'fecha_inicio_mensualidad', label: 'Fecha Inicio Mensualidad', section: 'contrato' },
+    { key: 'funnels', label: 'Funnels a Ejecutar', section: 'contrato' },
     { key: 'notas', label: 'Notas', section: 'notas', full: true }
   ];
 
@@ -2339,10 +2350,43 @@ function openFichaPreview(clientId) {
   knownFields.forEach(function(f) {
     var val = ficha[f.key];
     if (val == null || val === '') return;
-    if (typeof val === 'object') val = JSON.stringify(val);
+    var rendered = '';
+    if (f.key === 'responsables_pago_contrato' && Array.isArray(val)) {
+      rendered = '<table style="width:100%;border-collapse:collapse;font-size:0.85em;">' +
+        '<thead><tr style="border-bottom:1px solid var(--color-border);">' +
+        '<th style="text-align:left;padding:4px 8px;">Nombre</th>' +
+        '<th style="text-align:left;padding:4px 8px;">Email</th>' +
+        '<th style="text-align:left;padding:4px 8px;">Teléfono</th>' +
+        '<th style="text-align:left;padding:4px 8px;">Rol</th></tr></thead><tbody>' +
+        val.map(function(r) {
+          return '<tr style="border-bottom:1px solid var(--color-border-light,#333);">' +
+            '<td style="padding:4px 8px;">' + escapeHtml(r.nombre || '') + '</td>' +
+            '<td style="padding:4px 8px;">' + escapeHtml(r.email || '') + '</td>' +
+            '<td style="padding:4px 8px;">' + escapeHtml(r.telefono || '') + '</td>' +
+            '<td style="padding:4px 8px;">' + escapeHtml(r.rol || '') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    } else if (f.key === 'negociacion_setup' && Array.isArray(val)) {
+      rendered = '<table style="width:100%;border-collapse:collapse;font-size:0.85em;">' +
+        '<thead><tr style="border-bottom:1px solid var(--color-border);">' +
+        '<th style="text-align:left;padding:4px 8px;">Cuota</th>' +
+        '<th style="text-align:left;padding:4px 8px;">Monto</th>' +
+        '<th style="text-align:left;padding:4px 8px;">Fecha</th></tr></thead><tbody>' +
+        val.map(function(c, i) {
+          return '<tr style="border-bottom:1px solid var(--color-border-light,#333);">' +
+            '<td style="padding:4px 8px;">' + (i + 1) + '</td>' +
+            '<td style="padding:4px 8px;">' + escapeHtml(c.monto != null ? formatPeso(c.monto) : '') + '</td>' +
+            '<td style="padding:4px 8px;">' + escapeHtml(c.fecha || '') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    } else if (f.key === 'funnels' && Array.isArray(val)) {
+      rendered = escapeHtml(val.join(', '));
+    } else if (typeof val === 'object') {
+      rendered = escapeHtml(JSON.stringify(val));
+    } else {
+      rendered = escapeHtml(String(val));
+    }
     sectionContent[f.section] += '<div class="ficha-modal-item' + (f.full ? ' full' : '') + '">' +
       '<div class="ficha-modal-item-label">' + f.label + '</div>' +
-      '<div class="ficha-modal-item-value">' + escapeHtml(String(val)) + '</div>' +
+      '<div class="ficha-modal-item-value">' + rendered + '</div>' +
     '</div>';
   });
 
@@ -2625,7 +2669,7 @@ async function doAnularCargo(cargoId) {
 /* ===== SETUP BANNER ===== */
 function renderSetupBanner(clientId) {
   var setupCargos = allCargos.filter(function(c) {
-    return c.cliente_id === clientId && (c.concepto === 'setup_c1' || c.concepto === 'setup_c2');
+    return c.cliente_id === clientId && c.concepto.startsWith('setup_c');
   });
   if (setupCargos.length === 0) return '';
 
@@ -2674,7 +2718,7 @@ function shouldShowOnboardingBtn(clientId) {
   if (cliente.onboarding_ready) return false;
   // Find setup cargos
   var setupCargos = allCargos.filter(function(c) {
-    return c.cliente_id === clientId && (c.concepto === 'setup_c1' || c.concepto === 'setup_c2');
+    return c.cliente_id === clientId && c.concepto.startsWith('setup_c');
   });
   // If no setup cargos exist yet, don't show (client just entered, setup not configured)
   if (setupCargos.length === 0) return false;
@@ -2919,6 +2963,23 @@ document.addEventListener('keydown', function(e) {
 });
 
 /* ===== NUEVO CLIENTE ===== */
+function toggleSetupCuotas(n) {
+  var container = document.getElementById('nc_setup_cuotas_fields');
+  if (!container) return;
+  var count = parseInt(n) || 0;
+  if (count === 0) { container.innerHTML = ''; return; }
+  var today = new Date().toISOString().split('T')[0];
+  var html = '<div class="form-grid" style="margin-top:8px;">';
+  for (var i = 1; i <= count; i++) {
+    html += '<div class="form-group"><label class="form-label">Monto Cuota ' + i + ' ($)</label>' +
+      '<input type="number" class="form-input" name="nc_setup_monto_' + i + '" placeholder="0" step="0.01"></div>' +
+      '<div class="form-group"><label class="form-label">Fecha Cuota ' + i + '</label>' +
+      '<input type="date" class="form-input" name="nc_setup_fecha_' + i + '" value="' + today + '"></div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
 function openNewClientModal() {
   var today = new Date().toISOString().split('T')[0];
   var html = '<div class="modal-header"><div class="modal-title">Nuevo Cliente</div>' +
@@ -2931,9 +2992,9 @@ function openNewClientModal() {
     '<option value="activo">Activo</option><option value="iniciando">Iniciando</option>' +
     '<option value="pendiente_pago" selected>Pendiente Pago</option><option value="pausado">Pausado</option>' +
     '</select></div>' +
-    formField('Monto Setup ($)', 'number', 'nc_monto_setup', '') +
     '<div class="form-group"><label class="form-label">Setup en Cuotas</label>' +
-    '<select class="form-input" name="nc_setup_cuotas"><option value="1">1 cuota</option><option value="2">2 cuotas</option></select></div>' +
+    '<select class="form-input" name="nc_setup_cuotas" onchange="toggleSetupCuotas(this.value)"><option value="0">Sin setup</option><option value="1">1 cuota</option><option value="2">2 cuotas</option><option value="3">3 cuotas</option></select></div>' +
+    '<div id="nc_setup_cuotas_fields"></div>' +
     formField('Mensualidad ($)', 'number', 'nc_mensualidad', '500') +
     '<div class="form-group"><label class="form-label">Tipo Recurrente</label>' +
     '<select class="form-input" name="nc_tipo"><option value="mensual">Mensual</option><option value="anual">Anual</option></select></div>' +
@@ -2966,8 +3027,7 @@ async function submitNewClient(e) {
   var nombre = (fd.get('nc_nombre') || '').trim();
   if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
 
-  var montoSetup = parseFloat(fd.get('nc_monto_setup')) || 0;
-  var setupCuotas = parseInt(fd.get('nc_setup_cuotas')) || 1;
+  var setupCuotas = parseInt(fd.get('nc_setup_cuotas')) || 0;
   var mensualidad = parseFloat(fd.get('nc_mensualidad')) || 0;
   var tipo = fd.get('nc_tipo') || 'mensual';
   var fechaInicio = fd.get('nc_fecha_inicio') || null;
@@ -2981,12 +3041,18 @@ async function submitNewClient(e) {
   try {
     showToast('Creando cliente…', 'info');
 
+    // Compute total setup from individual cuotas
+    var montoSetup = 0;
+    for (var si = 1; si <= setupCuotas; si++) {
+      montoSetup += parseFloat(fd.get('nc_setup_monto_' + si)) || 0;
+    }
+
     // 1. Insert client
     var res = await sb.from('clientes').insert({
       nombre: nombre,
       estado: estado,
       monto_setup: montoSetup || null,
-      setup_cuotas: setupCuotas,
+      setup_cuotas: setupCuotas || 1,
       monto_mensualidad: mensualidad,
       tipo_recurrente: tipo,
       fecha_inicio: fechaInicio,
@@ -3005,26 +3071,17 @@ async function submitNewClient(e) {
     var cargos = [];
     var startDate = fechaInicio ? new Date(fechaInicio + 'T12:00:00') : new Date();
 
-    // Setup cargos
-    if (montoSetup > 0) {
-      var montoC1 = setupCuotas === 2 ? Math.ceil(montoSetup / 2) : montoSetup;
-      cargos.push({
-        cliente_id: clienteId,
-        concepto: 'setup_c1',
-        periodo: null,
-        monto: montoC1,
-        fecha_vencimiento: fechaInicio || new Date().toISOString().split('T')[0],
-        estado: 'pendiente'
-      });
-      if (setupCuotas === 2) {
-        var c2Date = new Date(startDate);
-        c2Date.setDate(c2Date.getDate() + 30);
+    // Setup cargos (up to 3 cuotas with individual amounts and dates)
+    for (var ci = 1; ci <= setupCuotas; ci++) {
+      var cuotaMonto = parseFloat(fd.get('nc_setup_monto_' + ci)) || 0;
+      var cuotaFecha = fd.get('nc_setup_fecha_' + ci) || fechaInicio || new Date().toISOString().split('T')[0];
+      if (cuotaMonto > 0) {
         cargos.push({
           cliente_id: clienteId,
-          concepto: 'setup_c2',
+          concepto: 'setup_c' + ci,
           periodo: null,
-          monto: montoSetup - montoC1,
-          fecha_vencimiento: c2Date.toISOString().split('T')[0],
+          monto: cuotaMonto,
+          fecha_vencimiento: cuotaFecha,
           estado: 'pendiente'
         });
       }
