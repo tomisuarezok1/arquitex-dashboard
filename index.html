@@ -1572,6 +1572,186 @@ table { border-collapse: collapse; width: 100%; }
   color: var(--color-primary);
 }
 
+/* ===== AUTH / LOGIN SCREEN ===== */
+.auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding: 20px;
+}
+
+.auth-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg, 12px);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Sora', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 28px;
+}
+
+.auth-field {
+  margin-bottom: 16px;
+}
+
+.auth-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.auth-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-divider);
+  background: var(--color-surface-2, var(--color-bg));
+  color: var(--color-text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.auth-field input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-bg);
+}
+
+.auth-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+
+.auth-btn:hover {
+  opacity: 0.9;
+}
+
+.auth-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  display: none;
+}
+
+/* User menu in header */
+.user-menu {
+  position: relative;
+}
+
+.user-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  border: 1px solid var(--color-divider);
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.user-menu-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  min-width: 200px;
+  z-index: 200;
+  display: none;
+  overflow: hidden;
+}
+
+.user-menu-dropdown.open {
+  display: block;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.user-menu-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.user-menu-item--danger {
+  color: var(--color-error);
+}
+
+.user-menu-divider {
+  height: 1px;
+  background: var(--color-divider);
+}
+
+.user-menu-email {
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-divider);
+  word-break: break-all;
+}
+
 .edit-name-input {
   font-size: 18px;
   font-weight: 600;
@@ -1590,7 +1770,34 @@ table { border-collapse: collapse; width: 100%; }
 </head>
 <body>
 
-<div class="app" id="app">
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="20" width="28" height="3" rx="1" fill="currentColor" opacity="0.25"/>
+        <path d="M16 4L4 20h24L16 4z" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+        <rect x="13" y="14" width="6" height="6" rx="0.5" fill="currentColor" opacity="0.5"/>
+      </svg>
+      Arquitex
+    </div>
+    <div class="auth-subtitle">Iniciá sesión para acceder al CRM de Cobros</div>
+    <div class="auth-error" id="authError"></div>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="auth-field">
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" required autocomplete="email" placeholder="tu@email.com">
+      </div>
+      <div class="auth-field">
+        <label for="authPassword">Contraseña</label>
+        <input type="password" id="authPassword" required autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button type="submit" class="auth-btn" id="authSubmitBtn">Iniciar Sesión</button>
+    </form>
+  </div>
+</div>
+
+<div class="app" id="app" style="display:none;">
   <!-- HEADER -->
   <header class="app-header">
     <div class="app-header-left">
@@ -1612,6 +1819,25 @@ table { border-collapse: collapse; width: 100%; }
       <button class="icon-btn" onclick="location.reload()" aria-label="Recargar datos">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
       </button>
+      <div class="user-menu" id="userMenu">
+        <button class="user-menu-btn" onclick="toggleUserMenu()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span id="userMenuLabel">Usuario</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="user-menu-dropdown" id="userMenuDropdown">
+          <div class="user-menu-email" id="userMenuEmail"></div>
+          <button class="user-menu-item" onclick="openCrearUsuarioModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6"/><path d="M19 8v6"/></svg>
+            Crear Usuario
+          </button>
+          <div class="user-menu-divider"></div>
+          <button class="user-menu-item user-menu-item--danger" onclick="handleLogout()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -3351,8 +3577,132 @@ async function submitNewClient(e) {
   }
 }
 
+/* ===== AUTH ===== */
+async function checkSession() {
+  var { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    showApp(session.user);
+  } else {
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+}
+
+function showApp(user) {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = '';
+  var email = user.email || '';
+  document.getElementById('userMenuEmail').textContent = email;
+  document.getElementById('userMenuLabel').textContent = email.split('@')[0];
+  loadData();
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  var email = document.getElementById('authEmail').value.trim();
+  var password = document.getElementById('authPassword').value;
+  var errEl = document.getElementById('authError');
+  var btn = document.getElementById('authSubmitBtn');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Ingresando…';
+
+  var { data, error } = await sb.auth.signInWithPassword({ email: email, password: password });
+  if (error) {
+    errEl.textContent = error.message === 'Invalid login credentials'
+      ? 'Email o contraseña incorrectos'
+      : error.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Iniciar Sesión';
+    return;
+  }
+  showApp(data.user);
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authError').style.display = 'none';
+  closeUserMenu();
+}
+
+function toggleUserMenu() {
+  var dd = document.getElementById('userMenuDropdown');
+  dd.classList.toggle('open');
+}
+
+function closeUserMenu() {
+  document.getElementById('userMenuDropdown').classList.remove('open');
+}
+
+// Close user menu on outside click
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('userMenu');
+  if (menu && !menu.contains(e.target)) closeUserMenu();
+});
+
+function openCrearUsuarioModal() {
+  closeUserMenu();
+  var html = '<div class="modal-header">' +
+    '<div class="modal-title">Crear Nuevo Usuario</div>' +
+    '<button class="icon-btn" onclick="closeModal()" aria-label="Cerrar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>' +
+  '</div>' +
+  '<form onsubmit="handleCrearUsuario(event)" style="padding:20px 24px;">' +
+    '<div class="form-group">' +
+      '<label class="form-label">Email</label>' +
+      '<input type="email" id="newUserEmail" class="form-input" required placeholder="nuevo@email.com">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label class="form-label">Contraseña</label>' +
+      '<input type="password" id="newUserPassword" class="form-input" required minlength="6" placeholder="Mínimo 6 caracteres">' +
+    '</div>' +
+    '<div class="auth-error" id="createUserError"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">' +
+      '<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
+      '<button type="submit" class="btn btn-primary" id="createUserBtn">Crear Usuario</button>' +
+    '</div>' +
+  '</form>';
+
+  openModal(html);
+}
+
+async function handleCrearUsuario(e) {
+  e.preventDefault();
+  var email = document.getElementById('newUserEmail').value.trim();
+  var password = document.getElementById('newUserPassword').value;
+  var errEl = document.getElementById('createUserError');
+  var btn = document.getElementById('createUserBtn');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Creando…';
+
+  var { error } = await sb.auth.signUp({ email: email, password: password });
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Crear Usuario';
+    return;
+  }
+
+  closeModal();
+  showToast('Usuario ' + email + ' creado exitosamente', 'success');
+}
+
 /* ===== INIT ===== */
-loadData();
+checkSession();
+
+// Listen for auth state changes (e.g. token refresh, sign out in another tab)
+sb.auth.onAuthStateChange(function(event, session) {
+  if (event === 'SIGNED_OUT') {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('authScreen').style.display = 'flex';
+  }
+});
 </script>
 </body>
 </html>
