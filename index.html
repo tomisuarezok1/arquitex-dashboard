@@ -340,12 +340,13 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 .btn-primary {
-  background: linear-gradient(90deg, #FEAE02, #986801);
-  color: #000;
+  background: #FEAE02;
+  color: #111;
   font-weight: 600;
+  border-radius: 8px;
 }
-.btn-primary:hover { background: linear-gradient(90deg, #ffc030, #a87510); }
-.btn-primary:active { background: linear-gradient(90deg, #e69d02, #7a5500); }
+.btn-primary:hover { background: #e69d02; }
+.btn-primary:active { background: #cc8c02; }
 
 .btn-secondary {
   background: var(--color-surface);
@@ -724,6 +725,52 @@ table { border-collapse: collapse; width: 100%; }
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.slideout-section-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: #FEAE02;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Datos de cobro card wrapper */
+.datos-cobro-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.datos-cobro-card .form-grid {
+  row-gap: 0;
+}
+
+.datos-cobro-card .form-group {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.datos-cobro-card .form-group:last-child,
+.datos-cobro-card .form-group.full:last-child {
+  border-bottom: none;
+}
+
+.datos-cobro-card .form-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.datos-cobro-card .form-group > div:last-child {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
 }
 
 /* ===== SUMMARY CARDS (in ficha header) ===== */
@@ -1218,9 +1265,30 @@ table { border-collapse: collapse; width: 100%; }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-primary);
+  color: #FEAE02;
   margin-bottom: 10px;
   padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+/* Dark theme tables inside ficha modal */
+.ficha-modal-body table {
+  color: var(--color-text);
+}
+
+.ficha-modal-body table th {
+  color: #FEAE02;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.ficha-modal-body table td {
+  color: var(--color-text);
+  padding: 6px 10px;
   border-bottom: 1px solid var(--color-divider);
 }
 
@@ -2052,8 +2120,8 @@ async function updateEstado(clientId, newEstado) {
 /* ===== DATOS DE COBRO ===== */
 function renderDatosCobro(cliente) {
   return '<div class="slideout-section">' +
-    '<div class="slideout-section-title">Datos de Cobro <button class="btn btn-sm btn-ghost" onclick="toggleEditDatos()" id="editDatosBtn">Editar</button></div>' +
-    '<div id="datosCobro">' + datosCobrosReadonly(cliente) + '</div>' +
+    '<div class="slideout-section-title">Datos de Cobro <button class="btn btn-sm btn-ghost" onclick="toggleEditDatos()" id="editDatosBtn" style="margin-left:auto;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg> Editar</button></div>' +
+    '<div class="datos-cobro-card"><div id="datosCobro">' + datosCobrosReadonly(cliente) + '</div></div>' +
   '</div>';
 }
 
@@ -2288,7 +2356,8 @@ function renderFichaCierre(cliente) {
   previewFields.forEach(function(f) {
     var val = ficha[f.key];
     if (val == null || val === '') return;
-    if (typeof val === 'object') val = JSON.stringify(val);
+    if (Array.isArray(val)) val = val.join(', ');
+    else if (typeof val === 'object') val = JSON.stringify(val);
     html += '<div class="ficha-cierre-item">' +
       '<div class="ficha-cierre-label">' + f.label + '</div>' +
       '<div class="ficha-cierre-value">' + escapeHtml(String(val)) + '</div>' +
@@ -2392,6 +2461,10 @@ function openFichaPreview(clientId) {
         }).join('') + '</tbody></table>';
     } else if (f.key === 'funnels' && Array.isArray(val)) {
       rendered = escapeHtml(val.join(', '));
+    } else if (f.key === 'tipo_empresa' && Array.isArray(val)) {
+      rendered = escapeHtml(val.join(', '));
+    } else if (Array.isArray(val)) {
+      rendered = escapeHtml(val.join(', '));
     } else if (typeof val === 'object') {
       rendered = escapeHtml(JSON.stringify(val));
     } else {
@@ -2409,7 +2482,12 @@ function openFichaPreview(clientId) {
     if (key === 'id' || key === 'created_at' || key === 'updated_at') return;
     var val = ficha[key];
     if (val == null || val === '') return;
-    if (typeof val === 'object') val = JSON.stringify(val);
+    if (Array.isArray(val)) val = val.join(', ');
+    else if (typeof val === 'object') val = JSON.stringify(val);
+    // Format fecha_envio as readable date
+    if (key === 'fecha_envio' && typeof val === 'string' && val.includes('T')) {
+      try { val = formatDateFull(val.split('T')[0]); } catch(e) {}
+    }
     extraContent += '<div class="ficha-modal-item">' +
       '<div class="ficha-modal-item-label">' + key.replace(/_/g, ' ') + '</div>' +
       '<div class="ficha-modal-item-value">' + escapeHtml(String(val)) + '</div>' +
