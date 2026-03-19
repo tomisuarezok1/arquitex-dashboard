@@ -393,20 +393,10 @@ table { border-collapse: collapse; width: 100%; }
 
 /* ===== KPI CARDS ===== */
 .kpi-grid {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.kpi-group {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  flex: 1;
-}
-
-.kpi-group + .kpi-group {
-  border-left: 1px solid var(--color-divider);
-  padding-left: 16px;
+  margin-bottom: 20px;
 }
 
 .kpi-card {
@@ -644,6 +634,17 @@ table { border-collapse: collapse; width: 100%; }
 .badge-vencido { background: var(--color-error-bg); color: var(--color-error); }
 .badge-pendiente-cargo { background: var(--color-info-bg); color: var(--color-info); }
 .badge-anulado { background: var(--color-surface-offset); color: var(--color-text-muted); text-decoration: line-through; }
+
+.debito-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+}
+.debito-si { background: var(--color-success-bg); color: var(--color-success); }
+.debito-no { background: var(--color-error-bg); color: var(--color-error); }
 
 .saldo-vencido { color: var(--color-error); font-weight: 600; }
 .saldo-por-vencer { color: var(--color-text-secondary); }
@@ -1477,13 +1478,7 @@ table { border-collapse: collapse; width: 100%; }
   .app-header { padding: 0 16px; }
   .app-main { padding: 16px; }
   .kpi-grid {
-    flex-direction: column;
-  }
-  .kpi-group + .kpi-group {
-    border-left: none;
-    padding-left: 0;
-    border-top: 1px solid var(--color-divider);
-    padding-top: 12px;
+    grid-template-columns: repeat(2, 1fr);
   }
   .toolbar { gap: 6px; }
   .search-input { min-width: 100%; }
@@ -1497,7 +1492,7 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 @media (max-width: 480px) {
-  .kpi-group { flex-direction: column; }
+  .kpi-grid { grid-template-columns: 1fr; }
 }
 
 /* ===== ESTADO DROPDOWN IN FICHA ===== */
@@ -2251,20 +2246,16 @@ function renderKPIs() {
   var avgLifetimeMonths = Math.round(avgLifetimeDays / 30);
 
   document.getElementById('kpiGrid').innerHTML =
-    '<div class="kpi-group">' +
-      kpiCard('Pendientes de Inicio', pendientes, 'warning', '') +
-      kpiCard('Activos', activos, 'success', '') +
-      kpiCard('Caídos', caidos, caidos > 0 ? 'error' : '', '') +
-    '</div>' +
-    '<div class="kpi-group">' +
-      kpiCard('Saldo Vencido', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', '') +
-      kpiCard('Próximos Cobros', formatPeso(prox30), '', '30 días') +
-      kpiCard('MRR', formatPeso(mrr), 'info', activos + ' suscripciones') +
-    '</div>' +
-    '<div class="kpi-group">' +
-      kpiCard('LTV Promedio', formatPeso(avgLTV), '', paidClients.length + ' clientes') +
-      kpiCard('Lifetime Prom.', avgLifetimeMonths + ' meses', '', Math.round(avgLifetimeDays) + ' días') +
-    '</div>';
+    // Row 1: Client statuses + MRR
+    kpiCard('Pendientes de Inicio', pendientes, 'warning', '') +
+    kpiCard('Activos', activos, 'success', '') +
+    kpiCard('Caídos', caidos, caidos > 0 ? 'error' : '', '') +
+    kpiCard('MRR', formatPeso(mrr), 'info', activos + ' suscripciones') +
+    // Row 2: Financial + Lifetime
+    kpiCard('Saldo Vencido', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', '') +
+    kpiCard('Próximos Cobros', formatPeso(prox30), '', '30 días') +
+    kpiCard('LTV Promedio', formatPeso(avgLTV), '', paidClients.length + ' clientes') +
+    kpiCard('Lifetime Prom.', avgLifetimeMonths + ' meses', '', Math.round(avgLifetimeDays) + ' días');
 }
 
 function kpiCard(label, value, cls, sub) {
@@ -2284,7 +2275,7 @@ var COLUMNS = [
   { key: 'life_time_dias', label: 'Life Time', sortable: true },
   { key: 'saldo', label: 'Saldo', sortable: true, sortKey: 'saldo_vencido' },
   { key: 'proximo_vencimiento', label: 'Próx. Venc.', sortable: true },
-  { key: 'metodo_pago', label: 'Método Pago', sortable: true },
+  { key: 'debito_configurado', label: 'Débito', sortable: true },
   { key: 'observaciones', label: 'Observaciones', sortable: false }
 ];
 
@@ -2420,8 +2411,7 @@ function renderTable() {
     var tipoLabel = (cliente.tipo_recurrente === 'anual') ? 'Anual' : 'Mensual';
     var saldoVencido = parseFloat(row.saldo_vencido) || 0;
     var proxVenc = row.proximo_vencimiento ? formatDate(row.proximo_vencimiento) + ' (' + formatPeso(row.proximo_vencimiento_monto) + ')' : '—';
-    var metodo = metodoLabel(cliente.metodo_pago);
-    var metodoPendConfig = (cliente.metodo_pago === 'debito_automatico' && !cliente.debito_configurado);
+    var debitoConf = cliente.debito_configurado;
     var obs = cliente.observaciones || '';
     var obsShort = obs.length > 80 ? obs.substring(0, 80) + '…' : obs;
 
@@ -2436,8 +2426,7 @@ function renderTable() {
         (saldoVencido > 0 ? '<div class="saldo-vencido text-xs">' + formatPeso(saldoVencido) + '</div>' : '<span class="text-xs" style="color:var(--color-success)">Al día</span>') +
       '</td>' +
       '<td><span class="prox-venc-badge">' + proxVenc + '</span></td>' +
-      '<td><span class="metodo-text">' + metodo + '</span>' +
-        (metodoPendConfig ? '<div class="metodo-sub">Pend. config</div>' : '') + '</td>' +
+      '<td><span class="debito-badge ' + (debitoConf ? 'debito-si' : 'debito-no') + '">' + (debitoConf ? 'Sí' : 'No') + '</span></td>' +
       '<td><span class="obs-text" title="' + escapeHtml(obs) + '">' + escapeHtml(obsShort || '—') + '</span></td>' +
       '</tr>';
   });
