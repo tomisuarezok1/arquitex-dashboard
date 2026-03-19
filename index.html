@@ -129,6 +129,7 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --color-bg: #000000;
   --color-surface: #131313;
   --color-surface-2: #1a1a1a;
@@ -179,6 +180,7 @@ table { border-collapse: collapse; width: 100%; }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
+    color-scheme: dark;
     --color-bg: #000000;
     --color-surface: #131313;
     --color-surface-2: #1a1a1a;
@@ -2224,9 +2226,7 @@ var COLUMNS = [
   { key: 'life_time_dias', label: 'Life Time', sortable: true },
   { key: 'saldo', label: 'Saldo', sortable: true, sortKey: 'saldo_vencido' },
   { key: 'proximo_vencimiento', label: 'Próx. Venc.', sortable: true },
-  { key: 'dia_corte', label: 'F. Corte', sortable: true },
   { key: 'metodo_pago', label: 'Método Pago', sortable: true },
-  { key: 'responsable', label: 'Responsable', sortable: true },
   { key: 'observaciones', label: 'Observaciones', sortable: false }
 ];
 
@@ -2361,15 +2361,10 @@ function renderTable() {
     var cliente = allClientes.find(function(c) { return c.id === row.id; }) || {};
     var tipoLabel = (cliente.tipo_recurrente === 'anual') ? 'Anual' : 'Mensual';
     var saldoVencido = parseFloat(row.saldo_vencido) || 0;
-    var saldoPorVencer = parseFloat(row.saldo_por_vencer_30d) || 0;
     var proxVenc = row.proximo_vencimiento ? formatDate(row.proximo_vencimiento) + ' (' + formatPeso(row.proximo_vencimiento_monto) + ')' : '—';
-    var diaCorte = cliente.dia_corte || '—';
-    if (cliente.tipo_recurrente === 'anual' && cliente.fecha_inicio) {
-      diaCorte = 'Anual (' + formatDate(cliente.fecha_inicio) + ')';
-    }
     var metodo = metodoLabel(cliente.metodo_pago);
     var metodoPendConfig = (cliente.metodo_pago === 'debito_automatico' && !cliente.debito_configurado);
-    var obs = cliente.observaciones || cliente.next_step_text || '';
+    var obs = cliente.observaciones || '';
     var obsShort = obs.length > 80 ? obs.substring(0, 80) + '…' : obs;
 
     var hasFicha = clientHasFicha(cliente);
@@ -2383,10 +2378,8 @@ function renderTable() {
         (saldoVencido > 0 ? '<div class="saldo-vencido text-xs">' + formatPeso(saldoVencido) + '</div>' : '<span class="text-xs" style="color:var(--color-success)">Al día</span>') +
       '</td>' +
       '<td><span class="prox-venc-badge">' + proxVenc + '</span></td>' +
-      '<td class="text-xs">' + diaCorte + '</td>' +
       '<td><span class="metodo-text">' + metodo + '</span>' +
         (metodoPendConfig ? '<div class="metodo-sub">Pend. config</div>' : '') + '</td>' +
-      '<td class="text-xs">' + escapeHtml(cliente.responsable || '—') + '</td>' +
       '<td><span class="obs-text" title="' + escapeHtml(obs) + '">' + escapeHtml(obsShort || '—') + '</span></td>' +
       '</tr>';
   });
