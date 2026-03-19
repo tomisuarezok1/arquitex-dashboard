@@ -1249,28 +1249,54 @@ table { border-collapse: collapse; width: 100%; }
 
 /* ===== FICHA PREVIEW MODAL ===== */
 .ficha-modal {
-  width: min(680px, 92vw);
+  width: min(760px, 94vw);
   background: var(--color-surface-2) !important;
   color: var(--color-text);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ficha-modal .modal-header {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-divider);
+  padding: 20px 28px;
+  flex-shrink: 0;
+}
+
+.ficha-modal .modal-footer {
+  background: var(--color-surface-2);
+  border-top: 1px solid var(--color-divider);
+  flex-shrink: 0;
 }
 
 .ficha-modal-body {
-  padding: 20px 24px;
+  padding: 24px 28px 28px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .ficha-modal-section {
-  margin-bottom: 20px;
+  margin-bottom: 28px;
+}
+
+.ficha-modal-section:last-child {
+  margin-bottom: 0;
 }
 
 .ficha-modal-section-title {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: #FEAE02;
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-divider);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(254, 174, 2, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Dark theme tables inside ficha modal */
@@ -1278,44 +1304,52 @@ table { border-collapse: collapse; width: 100%; }
   color: var(--color-text) !important;
   width: 100%;
   border-collapse: collapse;
+  background: var(--color-surface-1, rgba(0,0,0,0.15));
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .ficha-modal-body table th {
   color: #FEAE02 !important;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 8px 10px;
+  letter-spacing: 0.06em;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--color-divider);
   text-align: left;
+  background: rgba(254, 174, 2, 0.06);
 }
 
 .ficha-modal-body table td {
   color: var(--color-text) !important;
-  padding: 8px 10px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--color-divider);
+  font-size: 13px;
 }
 
-.ficha-modal .modal-header {
-  background: var(--color-surface-2);
-  color: var(--color-text);
+.ficha-modal-body table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-.ficha-modal .modal-footer {
-  background: var(--color-surface-2);
+.ficha-modal-body table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
 }
 
 .ficha-modal-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 20px;
+  gap: 16px 24px;
 }
 
 .ficha-modal-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--color-surface-1, rgba(0,0,0,0.15));
+  border-radius: 8px;
+  border: 1px solid var(--color-divider);
 }
 
 .ficha-modal-item.full {
@@ -1323,11 +1357,11 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 .ficha-modal-item-label {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .ficha-modal-item-value {
@@ -1335,6 +1369,19 @@ table { border-collapse: collapse; width: 100%; }
   color: var(--color-text);
   word-break: break-word;
   line-height: 1.5;
+}
+
+/* Full-width items with tables need no extra padding */
+.ficha-modal-item.full .ficha-modal-item-value table {
+  margin: 4px -14px -10px;
+  width: calc(100% + 28px);
+  border-radius: 0 0 8px 8px;
+}
+
+@media (max-width: 540px) {
+  .ficha-modal-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ===== FOOTER ===== */
@@ -2439,7 +2486,11 @@ function openFichaPreview(clientId) {
     { key: 'notas', label: 'Notas', section: 'notas', full: true }
   ];
 
-  var sections = { info: 'Información de la Empresa', contrato: 'Datos del Contrato', notas: 'Notas' };
+  var sections = {
+    info: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Información de la Empresa',
+    contrato: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Datos del Contrato',
+    notas: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Notas'
+  };
   var sectionContent = { info: '', contrato: '', notas: '' };
   var extraContent = '';
 
@@ -2524,7 +2575,7 @@ function openFichaPreview(clientId) {
 
   if (extraContent) {
     modalHtml += '<div class="ficha-modal-section">' +
-      '<div class="ficha-modal-section-title">Otros Datos</div>' +
+      '<div class="ficha-modal-section-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Otros Datos</div>' +
       '<div class="ficha-modal-grid">' + extraContent + '</div>' +
     '</div>';
   }
