@@ -788,6 +788,21 @@ table { border-collapse: collapse; width: 100%; }
   padding: 10px 12px;
 }
 
+.summary-card.summary-card--pendiente {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.summary-card.summary-card--vencido {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.summary-card.summary-card--lifetime {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.06);
+}
+
 .summary-card-label {
   font-size: 11px;
   font-weight: 500;
@@ -802,6 +817,29 @@ table { border-collapse: collapse; width: 100%; }
   font-variant-numeric: tabular-nums lining-nums;
   color: var(--color-text);
   margin-top: 2px;
+}
+
+.summary-card--pendiente .summary-card-value {
+  color: #22c55e;
+}
+
+.summary-card--vencido .summary-card-value {
+  color: #ef4444;
+}
+
+.summary-card--lifetime .summary-card-value {
+  color: #818cf8;
+}
+
+.summary-proximo {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.summary-proximo strong {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 /* ===== ACTION BAR ===== */
@@ -2098,10 +2136,10 @@ function openFicha(clientId) {
   var saldoPorVencer = parseFloat(vista ? vista.saldo_por_vencer_30d : 0) || 0;
   var saldoTotal = parseFloat(vista ? vista.saldo_total : 0) || 0;
 
-  // Saldo status badge
-  var saldoStatus = 'Al día', saldoStatusCls = 'badge-pagado';
-  if (saldoVencido > 0) { saldoStatus = 'Vencido'; saldoStatusCls = 'badge-vencido'; }
-  else if (saldoPorVencer > 0) { saldoStatus = 'Por vencer'; saldoStatusCls = 'badge-pendiente-cargo'; }
+  // Calculate lifetime value (sum of all paid cargos)
+  var lifetimeValue = allCargos.filter(function(c) {
+    return c.cliente_id === clientId && c.estado === 'pagado';
+  }).reduce(function(sum, c) { return sum + (parseFloat(c.monto) || 0); }, 0);
 
   // Header
   var headerHtml =
@@ -2115,24 +2153,25 @@ function openFicha(clientId) {
           return '<option value="' + e + '"' + (cliente.estado === e ? ' selected' : '') + '>' + estadoLabel(e) + '</option>';
         }).join('') +
       '</select>' +
-      '<span class="badge ' + saldoStatusCls + '">' + saldoStatus + '</span>' +
-      '<span class="badge badge-tipo">' + metodoLabel(cliente.metodo_pago) + '</span>' +
     '</div>' +
     '<div class="summary-cards">' +
-      '<div class="summary-card">' +
+      '<div class="summary-card summary-card--pendiente">' +
         '<div class="summary-card-label">Total Pendiente</div>' +
         '<div class="summary-card-value">' + formatPeso(saldoTotal) + '</div>' +
       '</div>' +
-      '<div class="summary-card">' +
+      '<div class="summary-card summary-card--vencido">' +
         '<div class="summary-card-label">Vencido</div>' +
-        '<div class="summary-card-value" style="color:' + (saldoVencido > 0 ? 'var(--color-error)' : 'inherit') + '">' + formatPeso(saldoVencido) + '</div>' +
+        '<div class="summary-card-value">' + formatPeso(saldoVencido) + '</div>' +
       '</div>' +
-      '<div class="summary-card">' +
-        '<div class="summary-card-label">Próx. Vencimiento</div>' +
-        '<div class="summary-card-value text-base">' +
-          (vista && vista.proximo_vencimiento ? formatDate(vista.proximo_vencimiento) + ' — ' + formatPeso(vista.proximo_vencimiento_monto) : '—') +
-        '</div>' +
+      '<div class="summary-card summary-card--lifetime">' +
+        '<div class="summary-card-label">Lifetime Value</div>' +
+        '<div class="summary-card-value">' + formatPeso(lifetimeValue) + '</div>' +
       '</div>' +
+    '</div>' +
+    '<div class="summary-proximo">' +
+      (vista && vista.proximo_vencimiento
+        ? 'Próximo vencimiento: <strong>' + formatDate(vista.proximo_vencimiento) + ' — ' + formatPeso(vista.proximo_vencimiento_monto) + '</strong>'
+        : 'Sin próximos vencimientos') +
     '</div>' +
     '<div class="action-bar">' +
       '<button class="btn btn-primary" onclick="openRegistrarPagoModal(\'' + clientId + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Registrar Pago</button>' +
