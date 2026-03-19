@@ -393,32 +393,45 @@ table { border-collapse: collapse; width: 100%; }
 
 /* ===== KPI CARDS ===== */
 .kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
   gap: 16px;
   margin-bottom: 20px;
+}
+
+.kpi-group {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.kpi-group + .kpi-group {
+  border-left: 1px solid var(--color-divider);
+  padding-left: 16px;
 }
 
 .kpi-card {
   background: var(--color-surface);
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
 .kpi-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  line-height: 1.3;
 }
 
 .kpi-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.02em;
@@ -427,9 +440,11 @@ table { border-collapse: collapse; width: 100%; }
 
 .kpi-value.error { color: var(--color-error); }
 .kpi-value.success { color: var(--color-success); }
+.kpi-value.warning { color: var(--color-warning); }
+.kpi-value.info { color: var(--color-info); }
 
 .kpi-sub {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums lining-nums;
 }
@@ -1462,10 +1477,13 @@ table { border-collapse: collapse; width: 100%; }
   .app-header { padding: 0 16px; }
   .app-main { padding: 16px; }
   .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
+    flex-direction: column;
   }
-  .kpi-grid .kpi-card:last-child {
-    grid-column: 1 / -1;
+  .kpi-group + .kpi-group {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--color-divider);
+    padding-top: 12px;
   }
   .toolbar { gap: 6px; }
   .search-input { min-width: 100%; }
@@ -1479,8 +1497,7 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 @media (max-width: 480px) {
-  .kpi-grid { grid-template-columns: 1fr; }
-  .kpi-grid .kpi-card:last-child { grid-column: auto; }
+  .kpi-group { flex-direction: column; }
 }
 
 /* ===== ESTADO DROPDOWN IN FICHA ===== */
@@ -2195,18 +2212,59 @@ async function loadData() {
 
 /* ===== KPI CARDS ===== */
 function renderKPIs() {
-  const activos = vistaData.filter(function(c) { return c.estado === 'activo'; }).length;
-  const totalPendiente = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_total) || 0); }, 0);
-  const totalVencido = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_vencido) || 0); }, 0);
-  const prox30 = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_por_vencer_30d) || 0); }, 0);
-  const debitoCount = allClientes.filter(function(c) { return c.metodo_pago === 'debito_automatico'; }).length;
+  // Group 1: Client statuses
+  var pendientes = vistaData.filter(function(c) { return c.estado === 'pendiente_inicio'; }).length;
+  var activos = vistaData.filter(function(c) { return c.estado === 'activo'; }).length;
+  var caidos = vistaData.filter(function(c) { return c.estado === 'caido'; }).length;
+
+  // Group 2: Financial
+  var totalVencido = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_vencido) || 0); }, 0);
+  var prox30 = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_por_vencer_30d) || 0); }, 0);
+  // MRR: sum of monto_mensualidad for active clients (annuals divided by 12)
+  var mrr = allClientes.filter(function(c) { return c.estado === 'activo'; }).reduce(function(s, c) {
+    var monto = parseFloat(c.monto_mensualidad) || 0;
+    if (c.tipo_recurrente === 'anual') return s + (monto / 12);
+    return s + monto;
+  }, 0);
+
+  // Group 3: Lifetime
+  var paidClients = allClientes.filter(function(c) {
+    return allCargos.some(function(ca) { return ca.cliente_id === c.id && ca.estado === 'pagado'; });
+  });
+  var avgLTV = 0;
+  if (paidClients.length > 0) {
+    var totalLTV = paidClients.reduce(function(s, c) {
+      return s + allCargos.filter(function(ca) { return ca.cliente_id === c.id && ca.estado === 'pagado'; })
+        .reduce(function(ss, ca) { return ss + (parseFloat(ca.monto) || 0); }, 0);
+    }, 0);
+    avgLTV = totalLTV / paidClients.length;
+  }
+  var clientsWithDate = allClientes.filter(function(c) { return c.created_at; });
+  var avgLifetimeDays = 0;
+  if (clientsWithDate.length > 0) {
+    var now = new Date();
+    var totalDays = clientsWithDate.reduce(function(s, c) {
+      return s + Math.floor((now - new Date(c.created_at)) / (1000 * 60 * 60 * 24));
+    }, 0);
+    avgLifetimeDays = totalDays / clientsWithDate.length;
+  }
+  var avgLifetimeMonths = Math.round(avgLifetimeDays / 30);
 
   document.getElementById('kpiGrid').innerHTML =
-    kpiCard('Clientes Activos', activos, '', '') +
-    kpiCard('Recaudación Pendiente', formatPeso(totalPendiente), '', '') +
-    kpiCard('Vencido Total', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', '') +
-    kpiCard('Próximos 30 Días', formatPeso(prox30), '', '') +
-    kpiCard('Débito Automático', debitoCount, '', 'de ' + allClientes.length + ' clientes');
+    '<div class="kpi-group">' +
+      kpiCard('Pendientes de Inicio', pendientes, 'warning', '') +
+      kpiCard('Activos', activos, 'success', '') +
+      kpiCard('Caídos', caidos, caidos > 0 ? 'error' : '', '') +
+    '</div>' +
+    '<div class="kpi-group">' +
+      kpiCard('Saldo Vencido', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', '') +
+      kpiCard('Próximos Cobros', formatPeso(prox30), '', '30 días') +
+      kpiCard('MRR', formatPeso(mrr), 'info', activos + ' suscripciones') +
+    '</div>' +
+    '<div class="kpi-group">' +
+      kpiCard('LTV Promedio', formatPeso(avgLTV), '', paidClients.length + ' clientes') +
+      kpiCard('Lifetime Prom.', avgLifetimeMonths + ' meses', '', Math.round(avgLifetimeDays) + ' días') +
+    '</div>';
 }
 
 function kpiCard(label, value, cls, sub) {
@@ -2979,9 +3037,8 @@ function openEditCargoModal(cargoId) {
           return '<option value="' + c + '"' + (cargo.concepto === c ? ' selected' : '') + '>' + conceptoLabel(c) + '</option>';
         }).join('') +
       '</select></div>' +
-      formField('Período', 'text', 'periodo', cargo.periodo || '') +
       formField('Monto', 'number', 'monto', cargo.monto) +
-      formField('Vencimiento', 'date', 'fecha_vencimiento', cargo.fecha_vencimiento) +
+      formField('Fecha de Vencimiento', 'date', 'fecha_vencimiento', cargo.fecha_vencimiento) +
       formField('Nota', 'text', 'nota', cargo.nota || '', true) +
       '<div class="form-group"><label class="form-label">Estado</label><select class="form-select" name="estado">' +
         ['pendiente','pagado','vencido','anulado'].map(function(e) {
@@ -3000,7 +3057,6 @@ async function submitEditCargo(e, cargoId) {
   var fd = new FormData(e.target);
   var data = {
     concepto: fd.get('concepto'),
-    periodo: fd.get('periodo') || null,
     monto: parseFloat(fd.get('monto')),
     fecha_vencimiento: fd.get('fecha_vencimiento'),
     nota: fd.get('nota') || null,
@@ -3036,9 +3092,8 @@ function openAgregarCargoModal(clientId) {
           return '<option value="' + c + '">' + conceptoLabel(c) + '</option>';
         }).join('') +
       '</select></div>' +
-      formField('Período (YYYY-MM)', 'text', 'periodo', '') +
       formField('Monto', 'number', 'monto', '') +
-      formField('Vencimiento', 'date', 'fecha_vencimiento', '') +
+      formField('Fecha de Vencimiento', 'date', 'fecha_vencimiento', '') +
       formField('Nota', 'text', 'nota', '', true) +
     '</div></form>' +
     '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
@@ -3053,7 +3108,6 @@ async function submitAgregarCargo(e, clientId) {
   var data = {
     cliente_id: clientId,
     concepto: fd.get('concepto'),
-    periodo: fd.get('periodo') || null,
     monto: parseFloat(fd.get('monto')),
     fecha_vencimiento: fd.get('fecha_vencimiento'),
     estado: 'pendiente',
