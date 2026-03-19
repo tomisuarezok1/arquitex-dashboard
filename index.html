@@ -508,15 +508,17 @@ table { border-collapse: collapse; width: 100%; }
   background: var(--color-surface);
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-lg);
-  overflow: clip;
+  overflow: hidden;
 }
 
 .table-scroll {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: calc(100vh - 260px);
 }
 
 .crm-table {
   font-size: 13px;
+  width: 100%;
 }
 
 .crm-table thead {
@@ -539,6 +541,23 @@ table { border-collapse: collapse; width: 100%; }
   cursor: pointer;
   user-select: none;
   transition: color var(--duration) var(--ease);
+  position: relative;
+}
+
+.col-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 10;
+}
+.col-resize-handle:hover,
+.col-resize-handle.active {
+  background: var(--color-primary);
+  opacity: 0.5;
 }
 
 .crm-table th:hover { color: var(--color-text); }
@@ -601,10 +620,8 @@ table { border-collapse: collapse; width: 100%; }
 
 .badge-estado { text-transform: uppercase; }
 .badge-activo { background: var(--badge-activo-bg); color: var(--badge-activo); }
-.badge-iniciando { background: var(--badge-iniciando-bg); color: var(--badge-iniciando); }
-.badge-pausado { background: var(--badge-pausado-bg); color: var(--badge-pausado); }
+.badge-pendiente_inicio { background: var(--badge-pendiente-bg); color: var(--badge-pendiente); }
 .badge-caido { background: var(--badge-caido-bg); color: var(--badge-caido); }
-.badge-pendiente_pago { background: var(--badge-pendiente-bg); color: var(--badge-pendiente); }
 
 .badge-pagado { background: var(--color-success-bg); color: var(--color-success); }
 .badge-vencido { background: var(--color-error-bg); color: var(--color-error); }
@@ -1863,11 +1880,9 @@ table { border-collapse: collapse; width: 100%; }
         <div class="multi-filter" id="estadoFilter">
           <button class="filter-select" onclick="toggleMultiFilter('estadoFilter')" type="button" style="width:100%;text-align:left;">Todos los estados <span class="multi-filter-arrow">▾</span></button>
           <div class="multi-filter-dropdown" id="estadoFilterDropdown">
+            <label class="multi-filter-option"><input type="checkbox" value="pendiente_inicio" onchange="onEstadoFilterChange()"> Pendiente de Inicio</label>
             <label class="multi-filter-option"><input type="checkbox" value="activo" onchange="onEstadoFilterChange()"> Activo</label>
-            <label class="multi-filter-option"><input type="checkbox" value="iniciando" onchange="onEstadoFilterChange()"> Iniciando</label>
-            <label class="multi-filter-option"><input type="checkbox" value="pausado" onchange="onEstadoFilterChange()"> Pausado</label>
             <label class="multi-filter-option"><input type="checkbox" value="caido" onchange="onEstadoFilterChange()"> Caído</label>
-            <label class="multi-filter-option"><input type="checkbox" value="pendiente_pago" onchange="onEstadoFilterChange()"> Pendiente Pago</label>
           </div>
         </div>
         <select class="filter-select" id="filterMetodo">
@@ -2004,34 +2019,28 @@ function daysToText(days) {
   return y + 'a' + (m > 0 ? ' ' + m + 'm' : '');
 }
 
-function calcLifeTime(createdAt, vistaValue) {
-  // Use vista value if it's nonzero; otherwise compute from created_at
-  if (vistaValue && vistaValue > 0) return vistaValue;
+function calcLifeTime(createdAt) {
   if (!createdAt) return null;
   var created = new Date(createdAt);
   var now = new Date();
   var diff = Math.floor((now - created) / (1000 * 60 * 60 * 24));
-  return diff > 0 ? diff : null;
+  return diff > 0 ? diff : 0;
 }
 
 function estadoBadgeClass(estado) {
   const map = {
     activo: 'badge-activo',
-    iniciando: 'badge-iniciando',
-    pausado: 'badge-pausado',
-    caido: 'badge-caido',
-    pendiente_pago: 'badge-pendiente_pago'
+    pendiente_inicio: 'badge-pendiente_inicio',
+    caido: 'badge-caido'
   };
-  return map[estado] || 'badge-pendiente_pago';
+  return map[estado] || 'badge-pendiente_inicio';
 }
 
 function estadoLabel(estado) {
   const map = {
     activo: 'Activo',
-    iniciando: 'Iniciando',
-    pausado: 'Pausado',
-    caido: 'Caído',
-    pendiente_pago: 'Pendiente Pago'
+    pendiente_inicio: 'Pendiente de Inicio',
+    caido: 'Caído'
   };
   return map[estado] || estado;
 }
@@ -2223,7 +2232,7 @@ var COLUMNS = [
 
 function renderTableHead() {
   var html = '<tr>';
-  COLUMNS.forEach(function(col) {
+  COLUMNS.forEach(function(col, i) {
     var sk = col.sortKey || col.key;
     var isSorted = currentSort.col === sk;
     var arrow = currentSort.dir === 'asc' ? '↑' : '↓';
@@ -2231,10 +2240,51 @@ function renderTableHead() {
       (isSorted ? ' class="sorted"' : '') + '>' +
       col.label +
       (col.sortable ? '<span class="sort-icon">' + (isSorted ? arrow : '↕') + '</span>' : '') +
+      '<div class="col-resize-handle" onmousedown="startColResize(event,' + i + ')"></div>' +
       '</th>';
   });
   html += '</tr>';
   document.getElementById('tableHead').innerHTML = html;
+}
+
+/* ===== COLUMN RESIZE ===== */
+var resizingCol = null;
+var resizeStartX = 0;
+var resizeStartW = 0;
+
+function startColResize(e, colIdx) {
+  e.stopPropagation();
+  e.preventDefault();
+  var th = document.querySelectorAll('#tableHead th')[colIdx];
+  if (!th) return;
+  resizingCol = th;
+  resizeStartX = e.pageX;
+  resizeStartW = th.offsetWidth;
+  th.querySelector('.col-resize-handle').classList.add('active');
+  document.addEventListener('mousemove', doColResize);
+  document.addEventListener('mouseup', stopColResize);
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+}
+
+function doColResize(e) {
+  if (!resizingCol) return;
+  var diff = e.pageX - resizeStartX;
+  var newW = Math.max(50, resizeStartW + diff);
+  resizingCol.style.width = newW + 'px';
+  resizingCol.style.minWidth = newW + 'px';
+}
+
+function stopColResize() {
+  if (resizingCol) {
+    var handle = resizingCol.querySelector('.col-resize-handle');
+    if (handle) handle.classList.remove('active');
+  }
+  resizingCol = null;
+  document.removeEventListener('mousemove', doColResize);
+  document.removeEventListener('mouseup', stopColResize);
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
 }
 
 function getFilteredData() {
@@ -2328,11 +2378,9 @@ function renderTable() {
       '<td><span class="badge badge-estado ' + estadoBadgeClass(row.estado) + '">' + estadoLabel(row.estado) + '</span></td>' +
       '<td class="text-xs">' + (cliente.created_at ? formatDate(cliente.created_at) : '—') + '</td>' +
       '<td class="text-xs">' + (cliente.fecha_inicio ? formatDate(cliente.fecha_inicio) : '—') + '</td>' +
-      '<td title="Desde ' + formatDateFull(cliente.created_at) + '">' + daysToText(calcLifeTime(cliente.created_at, row.life_time_dias)) + '</td>' +
+      '<td title="Desde ' + formatDateFull(cliente.created_at) + '">' + daysToText(calcLifeTime(cliente.created_at)) + '</td>' +
       '<td>' +
-        (saldoVencido > 0 ? '<div class="saldo-vencido text-xs">Vencido: ' + formatPeso(saldoVencido) + '</div>' : '') +
-        (saldoPorVencer > 0 ? '<div class="saldo-por-vencer text-xs">Próx 30d: ' + formatPeso(saldoPorVencer) + '</div>' : '') +
-        (saldoVencido === 0 && saldoPorVencer === 0 ? '<span class="text-xs" style="color:var(--color-success)">Al día</span>' : '') +
+        (saldoVencido > 0 ? '<div class="saldo-vencido text-xs">' + formatPeso(saldoVencido) + '</div>' : '<span class="text-xs" style="color:var(--color-success)">Al día</span>') +
       '</td>' +
       '<td><span class="prox-venc-badge">' + proxVenc + '</span></td>' +
       '<td class="text-xs">' + diaCorte + '</td>' +
@@ -2375,7 +2423,7 @@ function openFicha(clientId) {
     '</div>' +
     '<div class="slideout-badges">' +
       '<select class="estado-select-inline ' + estadoBadgeClass(cliente.estado) + '" onchange="updateEstado(\'' + clientId + '\', this.value)" style="background-color:var(--' + estadoBgVar(cliente.estado) + ')">' +
-        ['activo','iniciando','pausado','caido','pendiente_pago'].map(function(e) {
+        ['pendiente_inicio','activo','caido'].map(function(e) {
           return '<option value="' + e + '"' + (cliente.estado === e ? ' selected' : '') + '>' + estadoLabel(e) + '</option>';
         }).join('') +
       '</select>' +
@@ -2419,10 +2467,8 @@ function openFicha(clientId) {
 function estadoBgVar(estado) {
   var map = {
     activo: 'badge-activo-bg',
-    iniciando: 'badge-iniciando-bg',
-    pausado: 'badge-pausado-bg',
-    caido: 'badge-caido-bg',
-    pendiente_pago: 'badge-pendiente-bg'
+    pendiente_inicio: 'badge-pendiente-bg',
+    caido: 'badge-caido-bg'
   };
   return map[estado] || 'badge-pendiente-bg';
 }
@@ -2453,21 +2499,12 @@ function renderDatosCobro(cliente) {
 
 function datosCobrosReadonly(c) {
   return '<div class="form-grid">' +
-    readField('Setup', formatPeso(c.monto_setup) + ' (' + (c.setup_cuotas || 1) + ' cuota' + ((c.setup_cuotas||1) > 1 ? 's' : '') + ')') +
-    readField('Mensualidad', formatPeso(c.monto_mensualidad)) +
-    readField('Tipo', c.tipo_recurrente === 'anual' ? 'Anual' : 'Mensual') +
-    readField('Fecha Inicio', formatDateFull(c.fecha_inicio)) +
-    readField('Día Corte', c.dia_corte || '—') +
-    readField('Método Pago', metodoLabel(c.metodo_pago)) +
+    readField('Plan', (c.plan === 'pro' ? 'Pro' : 'Basic')) +
+    readField('Fecha de Creación', formatDateFull(c.created_at)) +
     readField('Débito Configurado', c.debito_configurado ? 'Sí' : 'No') +
-    readField('Responsable', c.responsable || '—') +
     '<div class="form-group full">' +
       '<div class="form-label">Observaciones</div>' +
       '<div style="font-size:13px;color:var(--color-text)">' + escapeHtml(c.observaciones || '—') + '</div>' +
-    '</div>' +
-    '<div class="form-group full">' +
-      '<div class="form-label">Próximo Paso</div>' +
-      '<div style="font-size:13px;color:var(--color-text)">' + escapeHtml(c.next_step_text || '—') + (c.next_step_date ? ' — ' + formatDateFull(c.next_step_date) : '') + '</div>' +
     '</div>' +
   '</div>';
 }
@@ -2492,18 +2529,10 @@ function toggleEditDatos() {
 
 function datosCobrosForm(c) {
   return '<form onsubmit="saveDatos(event)" class="form-grid">' +
-    formField('Monto Setup', 'number', 'monto_setup', c.monto_setup) +
-    '<div class="form-group"><label class="form-label">Cuotas Setup</label><select class="form-select" name="setup_cuotas"><option value="1"' + (c.setup_cuotas===1?' selected':'') + '>1</option><option value="2"' + (c.setup_cuotas===2?' selected':'') + '>2</option></select></div>' +
-    formField('Monto Mensualidad', 'number', 'monto_mensualidad', c.monto_mensualidad) +
-    '<div class="form-group"><label class="form-label">Tipo Recurrente</label><select class="form-select" name="tipo_recurrente"><option value="mensual"' + (c.tipo_recurrente==='mensual'?' selected':'') + '>Mensual</option><option value="anual"' + (c.tipo_recurrente==='anual'?' selected':'') + '>Anual</option></select></div>' +
-    formField('Fecha Inicio', 'date', 'fecha_inicio', c.fecha_inicio) +
-    formField('Día Corte', 'number', 'dia_corte', c.dia_corte) +
-    '<div class="form-group"><label class="form-label">Método Pago</label><select class="form-select" name="metodo_pago"><option value="debito_automatico"' + (c.metodo_pago==='debito_automatico'?' selected':'') + '>Débito Automático</option><option value="manual"' + (c.metodo_pago==='manual'?' selected':'') + '>Manual</option><option value="efectivo"' + (c.metodo_pago==='efectivo'?' selected':'') + '>Efectivo</option><option value="pendiente"' + (c.metodo_pago==='pendiente'?' selected':'') + '>Pendiente</option></select></div>' +
-    '<div class="form-group"><label class="form-check"><input type="checkbox" name="debito_configurado"' + (c.debito_configurado?' checked':'') + '> Débito configurado</label></div>' +
-    formField('Responsable', 'text', 'responsable', c.responsable || '') +
+    '<div class="form-group"><label class="form-label">Plan</label><select class="form-select" name="plan"><option value="basic"' + (c.plan !== 'pro' ? ' selected' : '') + '>Basic</option><option value="pro"' + (c.plan === 'pro' ? ' selected' : '') + '>Pro</option></select></div>' +
+    formField('Fecha de Creación', 'date', 'created_at', c.created_at ? c.created_at.substring(0, 10) : '') +
+    '<div class="form-group"><label class="form-check"><input type="checkbox" name="debito_configurado"' + (c.debito_configurado ? ' checked' : '') + '> Débito configurado</label></div>' +
     '<div class="form-group full"><label class="form-label">Observaciones</label><textarea class="form-textarea" name="observaciones">' + escapeHtml(c.observaciones || '') + '</textarea></div>' +
-    formField('Próximo Paso', 'text', 'next_step_text', c.next_step_text || '', true) +
-    formField('Fecha Próximo Paso', 'date', 'next_step_date', c.next_step_date || '') +
     '<div class="form-group full" style="margin-top:8px"><button type="submit" class="btn btn-primary">Guardar Cambios</button></div>' +
   '</form>';
 }
@@ -2516,20 +2545,13 @@ async function saveDatos(e) {
   e.preventDefault();
   var form = e.target;
   var fd = new FormData(form);
+  var createdAtVal = fd.get('created_at');
   var data = {
-    monto_setup: parseFloat(fd.get('monto_setup')) || 0,
-    setup_cuotas: parseInt(fd.get('setup_cuotas')) || 1,
-    monto_mensualidad: parseFloat(fd.get('monto_mensualidad')) || 0,
-    tipo_recurrente: fd.get('tipo_recurrente'),
-    fecha_inicio: fd.get('fecha_inicio') || null,
-    dia_corte: parseInt(fd.get('dia_corte')) || null,
-    metodo_pago: fd.get('metodo_pago'),
+    plan: fd.get('plan') || 'basic',
     debito_configurado: form.querySelector('[name="debito_configurado"]').checked,
-    responsable: fd.get('responsable') || null,
-    observaciones: fd.get('observaciones') || null,
-    next_step_text: fd.get('next_step_text') || null,
-    next_step_date: fd.get('next_step_date') || null
+    observaciones: fd.get('observaciones') || null
   };
+  if (createdAtVal) data.created_at = createdAtVal + 'T12:00:00.000Z';
 
   try {
     var res = await sb.from('clientes').update(data).eq('id', selectedClientId);
@@ -2632,7 +2654,7 @@ function renderPlanTable(cargos, clientId) {
   if (!cargos.length) return '<div class="empty-state"><p>No hay cargos registrados.</p></div>';
 
   var html = '<div class="table-container" style="border:none;"><div class="table-scroll"><table class="plan-table"><thead><tr>' +
-    '<th>Concepto</th><th>Período</th><th>Vencimiento</th><th>Monto</th><th>Estado</th><th>Pagado</th><th>Acciones</th>' +
+    '<th>Concepto</th><th>Vencimiento</th><th>Monto</th><th>Estado</th><th>Pagado</th><th>Acciones</th>' +
     '</tr></thead><tbody>';
 
   cargos.forEach(function(cargo) {
@@ -2641,7 +2663,6 @@ function renderPlanTable(cargos, clientId) {
 
     html += '<tr>' +
       '<td>' + conceptoLabel(cargo.concepto) + '</td>' +
-      '<td>' + (cargo.periodo ? formatMonthYear(cargo.periodo) : '—') + '</td>' +
       '<td>' + formatDate(cargo.fecha_vencimiento) + '</td>' +
       '<td style="font-weight:600">' + formatPeso(cargo.monto) + '</td>' +
       '<td><span class="badge ' + cargoEstadoBadgeClass(cargo.estado) + '">' + cargoEstadoLabel(cargo.estado) + '</span></td>' +
@@ -3146,8 +3167,9 @@ function renderSetupBanner(clientId) {
 function shouldShowOnboardingBtn(clientId) {
   var cliente = allClientes.find(function(c) { return c.id === clientId; });
   if (!cliente) return false;
-  // Don't show if already onboarded
+  // Don't show if already onboarded or if estado is activo
   if (cliente.onboarding_ready) return false;
+  if (cliente.estado === 'activo') return false;
   // Find setup cargos
   var setupCargos = allCargos.filter(function(c) {
     return c.cliente_id === clientId && c.concepto.startsWith('setup_c');
@@ -3243,14 +3265,14 @@ async function doConfirmarOnboarding(clientId) {
     // Update Supabase
     await sb.from('clientes').update({
       onboarding_ready: true,
-      estado: 'iniciando'
+      estado: 'activo'
     }).eq('id', clientId);
 
     // Update local
     cliente.onboarding_ready = true;
-    cliente.estado = 'iniciando';
+    cliente.estado = 'activo';
     var v = vistaData.find(function(x) { return x.id === clientId; });
-    if (v) v.estado = 'iniciando';
+    if (v) v.estado = 'activo';
 
     showToast('Onboarding iniciado correctamente', 'success');
     renderTable();
@@ -3421,8 +3443,8 @@ function openNewClientModal() {
     formField('Nombre', 'text', 'nc_nombre', '', true) +
     '<div class="form-group"><label class="form-label">Estado</label>' +
     '<select class="form-input" name="nc_estado">' +
-    '<option value="activo">Activo</option><option value="iniciando">Iniciando</option>' +
-    '<option value="pendiente_pago" selected>Pendiente Pago</option><option value="pausado">Pausado</option>' +
+    '<option value="pendiente_inicio" selected>Pendiente de Inicio</option>' +
+    '<option value="activo">Activo</option><option value="caido">Caído</option>' +
     '</select></div>' +
     '<div class="form-group"><label class="form-label">Setup en Cuotas</label>' +
     '<select class="form-input" name="nc_setup_cuotas" onchange="toggleSetupCuotas(this.value)"><option value="0">Sin setup</option><option value="1">1 cuota</option><option value="2">2 cuotas</option><option value="3">3 cuotas</option></select></div>' +
@@ -3465,7 +3487,7 @@ async function submitNewClient(e) {
   var fechaInicio = fd.get('nc_fecha_inicio') || null;
   var diaCorte = parseInt(fd.get('nc_dia_corte')) || null;
   var metodo = fd.get('nc_metodo') || 'pendiente';
-  var estado = fd.get('nc_estado') || 'pendiente_pago';
+  var estado = fd.get('nc_estado') || 'pendiente_inicio';
   var responsable = (fd.get('nc_responsable') || '').trim() || null;
   var observaciones = (fd.get('nc_observaciones') || '').trim() || null;
   var mesesCargos = parseInt(fd.get('nc_meses_cargos')) || 0;
