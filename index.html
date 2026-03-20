@@ -439,6 +439,16 @@ table { border-collapse: collapse; width: 100%; }
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+.kpi-clickable {
+  cursor: pointer;
+  transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+}
+
+.kpi-clickable:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
 /* ===== TOOLBAR ===== */
 .toolbar {
   display: flex;
@@ -1899,19 +1909,14 @@ table { border-collapse: collapse; width: 100%; }
             <label class="multi-filter-option"><input type="checkbox" value="caido" onchange="onEstadoFilterChange()"> Caído</label>
           </div>
         </div>
-        <select class="filter-select" id="filterMetodo">
-          <option value="">Todo método</option>
-          <option value="debito_automatico">Débito Automático</option>
-          <option value="manual">Manual</option>
-          <option value="efectivo">Efectivo</option>
-          <option value="pendiente">Pendiente</option>
-        </select>
-        <select class="filter-select" id="filterSaldo">
-          <option value="">Todo saldo</option>
-          <option value="vencido">Con saldo vencido</option>
-          <option value="por_vencer">Por vencer (30d)</option>
-          <option value="al_dia">Al día</option>
-        </select>
+        <div class="multi-filter" id="saldoFilter">
+          <button class="filter-select" onclick="toggleMultiFilter('saldoFilter')" type="button" style="width:100%;text-align:left;">Todo saldo <span class="multi-filter-arrow">▾</span></button>
+          <div class="multi-filter-dropdown" id="saldoFilterDropdown">
+            <label class="multi-filter-option"><input type="checkbox" value="vencido" onchange="onSaldoFilterChange()"> Con saldo vencido</label>
+            <label class="multi-filter-option"><input type="checkbox" value="por_vencer" onchange="onSaldoFilterChange()"> Por vencer (30d)</label>
+            <label class="multi-filter-option"><input type="checkbox" value="al_dia" onchange="onSaldoFilterChange()"> Al día</label>
+          </div>
+        </div>
         <div class="toolbar-spacer"></div>
         <span class="results-count" id="resultsCount"></span>
         <button class="btn btn-primary" onclick="openNewClientModal()" style="margin-left:8px;white-space:nowrap;">
@@ -2234,7 +2239,7 @@ function renderKPIs() {
     }, 0);
     avgLTV = totalLTV / paidClients.length;
   }
-  var clientsWithDate = allClientes.filter(function(c) { return c.created_at; });
+  var clientsWithDate = allClientes.filter(function(c) { return c.created_at && c.estado === 'activo'; });
   var avgLifetimeDays = 0;
   if (clientsWithDate.length > 0) {
     var now = new Date();
@@ -2247,19 +2252,20 @@ function renderKPIs() {
 
   document.getElementById('kpiGrid').innerHTML =
     // Row 1: Client statuses + MRR
-    kpiCard('Pendientes de Inicio', pendientes, 'warning', '') +
-    kpiCard('Activos', activos, 'success', '') +
-    kpiCard('Caídos', caidos, caidos > 0 ? 'error' : '', '') +
+    kpiCard('Pendientes de Inicio', pendientes, 'warning', '', 'filterByKpi(&quot;estado&quot;,&quot;pendiente_inicio&quot;)') +
+    kpiCard('Activos', activos, 'success', '', 'filterByKpi(&quot;estado&quot;,&quot;activo&quot;)') +
+    kpiCard('Caídos', caidos, caidos > 0 ? 'error' : '', '', 'filterByKpi(&quot;estado&quot;,&quot;caido&quot;)') +
     kpiCard('MRR', formatPeso(mrr), 'info', activos + ' suscripciones') +
     // Row 2: Financial + Lifetime
-    kpiCard('Saldo Vencido', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', '') +
-    kpiCard('Próximos Cobros', formatPeso(prox30), '', '30 días') +
+    kpiCard('Saldo Vencido', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', '', 'filterByKpi(&quot;saldo&quot;,&quot;vencido&quot;)') +
+    kpiCard('Próximos Cobros', formatPeso(prox30), '', '30 días', 'filterByKpi(&quot;saldo&quot;,&quot;por_vencer&quot;)') +
     kpiCard('LTV Promedio', formatPeso(avgLTV), '', paidClients.length + ' clientes') +
-    kpiCard('Lifetime Prom.', avgLifetimeMonths + ' meses', '', Math.round(avgLifetimeDays) + ' días');
+    kpiCard('Lifetime Prom.', avgLifetimeMonths + ' meses', '', clientsWithDate.length + ' activos');
 }
 
-function kpiCard(label, value, cls, sub) {
-  return '<div class="kpi-card">' +
+function kpiCard(label, value, cls, sub, clickAction) {
+  var clickAttr = clickAction ? ' onclick="' + clickAction + '" style="cursor:pointer;"' : '';
+  return '<div class="kpi-card' + (clickAction ? ' kpi-clickable' : '') + '"' + clickAttr + '>' +
     '<div class="kpi-label">' + label + '</div>' +
     '<div class="kpi-value ' + cls + '">' + value + '</div>' +
     (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') +
@@ -2339,16 +2345,20 @@ function stopColResize() {
 function getFilteredData() {
   var search = document.getElementById('searchInput').value.toLowerCase().trim();
   var selectedEstados = getSelectedEstados();
-  var metodo = document.getElementById('filterMetodo').value;
-  var saldo = document.getElementById('filterSaldo').value;
+  var selectedSaldos = getSelectedSaldos();
 
   return vistaData.filter(function(row) {
     if (search && row.nombre.toLowerCase().indexOf(search) === -1) return false;
     if (selectedEstados.length > 0 && selectedEstados.indexOf(row.estado) === -1) return false;
-    if (metodo && row.metodo_pago !== metodo) return false;
-    if (saldo === 'vencido' && !(parseFloat(row.saldo_vencido) > 0)) return false;
-    if (saldo === 'por_vencer' && !(parseFloat(row.saldo_por_vencer_30d) > 0)) return false;
-    if (saldo === 'al_dia' && (parseFloat(row.saldo_vencido) > 0 || parseFloat(row.saldo_por_vencer_30d) > 0)) return false;
+    if (selectedSaldos.length > 0) {
+      var matchesSaldo = false;
+      for (var i = 0; i < selectedSaldos.length; i++) {
+        if (selectedSaldos[i] === 'vencido' && parseFloat(row.saldo_vencido) > 0) matchesSaldo = true;
+        if (selectedSaldos[i] === 'por_vencer' && parseFloat(row.saldo_por_vencer_30d) > 0) matchesSaldo = true;
+        if (selectedSaldos[i] === 'al_dia' && !(parseFloat(row.saldo_vencido) > 0) && !(parseFloat(row.saldo_por_vencer_30d) > 0)) matchesSaldo = true;
+      }
+      if (!matchesSaldo) return false;
+    }
     return true;
   });
 }
@@ -2436,8 +2446,6 @@ function renderTable() {
 
 /* ===== FILTERS ===== */
 document.getElementById('searchInput').addEventListener('input', renderTable);
-document.getElementById('filterMetodo').addEventListener('change', renderTable);
-document.getElementById('filterSaldo').addEventListener('change', renderTable);
 
 /* ===== FICHA DE CLIENTE ===== */
 function openFicha(clientId) {
@@ -3345,6 +3353,52 @@ function onEstadoFilterChange() {
     btn.innerHTML = selected.length + ' estados <span class="multi-filter-arrow">\u25be</span>';
   }
   renderTable();
+}
+
+/* ===== MULTI-FILTER SALDO ===== */
+function getSelectedSaldos() {
+  var checkboxes = document.querySelectorAll('#saldoFilterDropdown input[type="checkbox"]:checked');
+  var selected = [];
+  checkboxes.forEach(function(cb) { selected.push(cb.value); });
+  return selected;
+}
+
+function saldoLabel(val) {
+  var map = { vencido: 'Con saldo vencido', por_vencer: 'Por vencer (30d)', al_dia: 'Al día' };
+  return map[val] || val;
+}
+
+function onSaldoFilterChange() {
+  var selected = getSelectedSaldos();
+  var btn = document.querySelector('#saldoFilter .filter-select');
+  if (selected.length === 0) {
+    btn.innerHTML = 'Todo saldo <span class="multi-filter-arrow">\u25be</span>';
+  } else if (selected.length === 1) {
+    btn.innerHTML = saldoLabel(selected[0]) + ' <span class="multi-filter-arrow">\u25be</span>';
+  } else {
+    btn.innerHTML = selected.length + ' saldos <span class="multi-filter-arrow">\u25be</span>';
+  }
+  renderTable();
+}
+
+/* ===== KPI CLICK FILTER ===== */
+function filterByKpi(type, value) {
+  // Clear all filters first
+  document.getElementById('searchInput').value = '';
+  document.querySelectorAll('#estadoFilterDropdown input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+  document.querySelectorAll('#saldoFilterDropdown input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+
+  if (type === 'estado') {
+    var cb = document.querySelector('#estadoFilterDropdown input[value="' + value + '"]');
+    if (cb) cb.checked = true;
+    onEstadoFilterChange();
+    onSaldoFilterChange();
+  } else if (type === 'saldo') {
+    var cb = document.querySelector('#saldoFilterDropdown input[value="' + value + '"]');
+    if (cb) cb.checked = true;
+    onSaldoFilterChange();
+    onEstadoFilterChange();
+  }
 }
 
 // Close multi-filter when clicking outside
