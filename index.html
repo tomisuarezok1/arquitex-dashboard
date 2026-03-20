@@ -3162,6 +3162,9 @@ async function doAnularCargo(cargoId) {
 
 /* ===== SETUP BANNER ===== */
 function renderSetupBanner(clientId) {
+  var cliente = allClientes.find(function(c) { return c.id === clientId; });
+  if (cliente && cliente.estado === 'activo') return '';
+
   var setupCargos = allCargos.filter(function(c) {
     return c.cliente_id === clientId && c.concepto.startsWith('setup_c');
   });
