@@ -1904,7 +1904,7 @@ table { border-collapse: collapse; width: 100%; }
         <div class="multi-filter" id="estadoFilter">
           <button class="filter-select" onclick="toggleMultiFilter('estadoFilter')" type="button" style="width:100%;text-align:left;">Todos los estados <span class="multi-filter-arrow">▾</span></button>
           <div class="multi-filter-dropdown" id="estadoFilterDropdown">
-            <label class="multi-filter-option"><input type="checkbox" value="pendiente_inicio" onchange="onEstadoFilterChange()"> Pendiente de Inicio</label>
+            <label class="multi-filter-option"><input type="checkbox" value="pendiente_inicio" onchange="onEstadoFilterChange()"> Cierre Pactado</label>
             <label class="multi-filter-option"><input type="checkbox" value="activo" onchange="onEstadoFilterChange()"> Activo</label>
             <label class="multi-filter-option"><input type="checkbox" value="caido" onchange="onEstadoFilterChange()"> Caído</label>
           </div>
@@ -2058,7 +2058,7 @@ function estadoBadgeClass(estado) {
 function estadoLabel(estado) {
   const map = {
     activo: 'Activo',
-    pendiente_inicio: 'Pendiente de Inicio',
+    pendiente_inicio: 'Cierre Pactado',
     caido: 'Caído'
   };
   return map[estado] || estado;
@@ -2252,7 +2252,7 @@ function renderKPIs() {
 
   document.getElementById('kpiGrid').innerHTML =
     // Row 1: Client statuses + MRR
-    kpiCard('Pendientes de Inicio', pendientes, 'warning', '', 'filterByKpi(&quot;estado&quot;,&quot;pendiente_inicio&quot;)') +
+    kpiCard('Cierre Pactado', pendientes, 'warning', '', 'filterByKpi(&quot;estado&quot;,&quot;pendiente_inicio&quot;)') +
     kpiCard('Activos', activos, 'success', '', 'filterByKpi(&quot;estado&quot;,&quot;activo&quot;)') +
     kpiCard('Caídos', caidos, caidos > 0 ? 'error' : '', '', 'filterByKpi(&quot;estado&quot;,&quot;caido&quot;)') +
     kpiCard('MRR', formatPeso(mrr), 'info', activos + ' suscripciones') +
@@ -3530,7 +3530,7 @@ function openNewClientModal() {
     formField('Nombre', 'text', 'nc_nombre', '', true) +
     '<div class="form-group"><label class="form-label">Estado</label>' +
     '<select class="form-input" name="nc_estado">' +
-    '<option value="pendiente_inicio" selected>Pendiente de Inicio</option>' +
+    '<option value="pendiente_inicio" selected>Cierre Pactado</option>' +
     '<option value="activo">Activo</option><option value="caido">Caído</option>' +
     '</select></div>' +
     '<div class="form-group"><label class="form-label">Setup en Cuotas</label>' +
