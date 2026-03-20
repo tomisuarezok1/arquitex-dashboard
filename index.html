@@ -2418,16 +2418,13 @@ function renderTable() {
   var html = '';
   sorted.forEach(function(row) {
     var cliente = allClientes.find(function(c) { return c.id === row.id; }) || {};
-    var tipoLabel = (cliente.tipo_recurrente === 'anual') ? 'Anual' : 'Mensual';
     var saldoVencido = parseFloat(row.saldo_vencido) || 0;
     var proxVenc = row.proximo_vencimiento ? formatDate(row.proximo_vencimiento) + ' (' + formatPeso(row.proximo_vencimiento_monto) + ')' : '—';
     var debitoConf = cliente.debito_configurado;
     var obs = cliente.observaciones || '';
     var obsShort = obs.length > 80 ? obs.substring(0, 80) + '…' : obs;
-
-    var hasFicha = clientHasFicha(cliente);
     html += '<tr onclick="openFicha(\'' + row.id + '\')">' +
-      '<td><div class="client-name">' + escapeHtml(row.nombre) + ' <span class="badge badge-tipo">' + tipoLabel + '</span>' + (hasFicha ? '<span class="ficha-indicator" title="Tiene ficha de cierre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>' : '') + '</div></td>' +
+      '<td><div class="client-name">' + escapeHtml(row.nombre) + '</div></td>' +
       '<td><span class="badge badge-estado ' + estadoBadgeClass(row.estado) + '">' + estadoLabel(row.estado) + '</span></td>' +
       '<td class="text-xs">' + (cliente.created_at ? formatDate(cliente.created_at) : '—') + '</td>' +
       '<td class="text-xs">' + (cliente.fecha_inicio ? formatDate(cliente.fecha_inicio) : '—') + '</td>' +
