@@ -391,28 +391,65 @@ table { border-collapse: collapse; width: 100%; }
   cursor: not-allowed;
 }
 
+/* ===== KPI SECTION ===== */
+.kpi-section {
+  margin-bottom: 16px;
+}
+
+.kpi-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 0 0 8px 0;
+  transition: color var(--duration) var(--ease);
+}
+
+.kpi-toggle:hover {
+  color: var(--color-text);
+}
+
+.kpi-toggle-icon {
+  font-size: 10px;
+  transition: transform var(--duration) var(--ease);
+}
+
+.kpi-section.collapsed .kpi-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.kpi-section.collapsed .kpi-grid {
+  display: none;
+}
+
 /* ===== KPI CARDS ===== */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 8px;
 }
 
 .kpi-card {
   background: var(--color-surface);
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-lg);
-  padding: 14px 16px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
 
 .kpi-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -421,7 +458,7 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 .kpi-value {
-  font-size: 22px;
+  font-size: 17px;
   font-weight: 700;
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.02em;
@@ -434,7 +471,7 @@ table { border-collapse: collapse; width: 100%; }
 .kpi-value.info { color: var(--color-info); }
 
 .kpi-sub {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums lining-nums;
 }
@@ -1893,7 +1930,12 @@ table { border-collapse: collapse; width: 100%; }
     <!-- Dashboard content (hidden until loaded) -->
     <div id="dashboardContent" style="display:none;">
       <!-- KPI CARDS -->
-      <div class="kpi-grid" id="kpiGrid"></div>
+      <div class="kpi-section" id="kpiSection">
+        <button class="kpi-toggle" onclick="toggleKpis()">
+          <span class="kpi-toggle-icon">▼</span> KPIs
+        </button>
+        <div class="kpi-grid" id="kpiGrid"></div>
+      </div>
 
       <!-- TOOLBAR -->
       <div class="toolbar">
@@ -2220,7 +2262,15 @@ function renderKPIs() {
 
   // Group 2: Financial
   var totalVencido = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_vencido) || 0); }, 0);
+  var cargosVencidosCant = allCargos.filter(function(ca) { return ca.estado === 'vencido'; }).length;
   var prox30 = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_por_vencer_30d) || 0); }, 0);
+  var now30 = new Date();
+  var en30d = new Date(now30.getTime() + 30 * 24 * 60 * 60 * 1000);
+  var cargos30dCant = allCargos.filter(function(ca) {
+    if (ca.estado === 'pagado' || ca.estado === 'vencido') return false;
+    var fv = ca.fecha_vencimiento ? new Date(ca.fecha_vencimiento + 'T00:00:00') : null;
+    return fv && fv >= now30 && fv <= en30d;
+  }).length;
 
   // Cobros pendientes del mes corriente: cargos no pagados con vencimiento en el mes calendario actual
   var now = new Date();
@@ -2270,14 +2320,28 @@ function renderKPIs() {
     kpiCard('Activos', activos, 'success', '', 'filterByKpi(&quot;estado&quot;,&quot;activo&quot;)') +
     kpiCard('Caídos', caidos, caidos > 0 ? 'error' : '', '', 'filterByKpi(&quot;estado&quot;,&quot;caido&quot;)') +
     // Row 2: Cobranzas
-    kpiCard('Saldo Vencido', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', '', 'filterByKpi(&quot;saldo&quot;,&quot;vencido&quot;)') +
-    kpiCard('Próximos Cobros', formatPeso(prox30), '30 días', '', 'filterByKpi(&quot;saldo&quot;,&quot;por_vencer&quot;)') +
-    kpiCard('Cobros Pend. Mes', formatPeso(cobrosMes), 'info', cobrosMesCant + ' cargos', 'filterByKpi(&quot;saldo&quot;,&quot;pend_mes&quot;)') +
+    kpiCard('Saldo Vencido', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', cargosVencidosCant + ' cargos', 'filterByKpi(&quot;saldo&quot;,&quot;vencido&quot;)') +
+    kpiCard('Cobros Pendientes (30d)', formatPeso(prox30), '', cargos30dCant + ' cargos', 'filterByKpi(&quot;saldo&quot;,&quot;por_vencer&quot;)') +
+    kpiCard('Cobros Pendientes (mes corriente)', formatPeso(cobrosMes), 'info', cobrosMesCant + ' cargos', 'filterByKpi(&quot;saldo&quot;,&quot;pend_mes&quot;)') +
     // Row 3: Revenue y Lifetime
     kpiCard('MRR', formatPeso(mrr), 'info', activos + ' suscripciones') +
     kpiCard('LTV Promedio', formatPeso(avgLTV), '', paidClients.length + ' clientes') +
     kpiCard('Lifetime Prom.', avgLifetimeMonths + ' meses', '', clientsWithDate.length + ' activos');
 }
+
+function toggleKpis() {
+  var section = document.getElementById('kpiSection');
+  section.classList.toggle('collapsed');
+  localStorage.setItem('kpiCollapsed', section.classList.contains('collapsed') ? '1' : '0');
+}
+
+// Restore collapsed state on load
+(function() {
+  if (localStorage.getItem('kpiCollapsed') === '1') {
+    var section = document.getElementById('kpiSection');
+    if (section) section.classList.add('collapsed');
+  }
+})();
 
 function kpiCard(label, value, cls, sub, clickAction) {
   var clickAttr = clickAction ? ' onclick="' + clickAction + '" style="cursor:pointer;"' : '';
