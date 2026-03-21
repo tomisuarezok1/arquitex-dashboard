@@ -394,7 +394,7 @@ table { border-collapse: collapse; width: 100%; }
 /* ===== KPI CARDS ===== */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -1914,6 +1914,7 @@ table { border-collapse: collapse; width: 100%; }
           <div class="multi-filter-dropdown" id="saldoFilterDropdown">
             <label class="multi-filter-option"><input type="checkbox" value="vencido" onchange="onSaldoFilterChange()"> Con saldo vencido</label>
             <label class="multi-filter-option"><input type="checkbox" value="por_vencer" onchange="onSaldoFilterChange()"> Por vencer (30d)</label>
+            <label class="multi-filter-option"><input type="checkbox" value="pend_mes" onchange="onSaldoFilterChange()"> Pendiente mes corriente</label>
             <label class="multi-filter-option"><input type="checkbox" value="al_dia" onchange="onSaldoFilterChange()"> Al día</label>
           </div>
         </div>
@@ -2220,6 +2221,19 @@ function renderKPIs() {
   // Group 2: Financial
   var totalVencido = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_vencido) || 0); }, 0);
   var prox30 = vistaData.reduce(function(s, c) { return s + (parseFloat(c.saldo_por_vencer_30d) || 0); }, 0);
+
+  // Cobros pendientes del mes corriente: cargos no pagados con vencimiento en el mes calendario actual
+  var now = new Date();
+  var mesInicio = new Date(now.getFullYear(), now.getMonth(), 1);
+  var mesFin = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  var cobrosMesData = allCargos.filter(function(ca) {
+    if (ca.estado === 'pagado') return false;
+    var fv = ca.fecha_vencimiento ? new Date(ca.fecha_vencimiento + 'T00:00:00') : null;
+    return fv && fv >= mesInicio && fv <= mesFin;
+  });
+  var cobrosMes = cobrosMesData.reduce(function(s, ca) { return s + (parseFloat(ca.monto) || 0); }, 0);
+  var cobrosMesCant = cobrosMesData.length;
+
   // MRR: sum of monto_mensualidad for active clients (annuals divided by 12)
   var mrr = allClientes.filter(function(c) { return c.estado === 'activo'; }).reduce(function(s, c) {
     var monto = parseFloat(c.monto_mensualidad) || 0;
@@ -2251,14 +2265,16 @@ function renderKPIs() {
   var avgLifetimeMonths = Math.round(avgLifetimeDays / 30);
 
   document.getElementById('kpiGrid').innerHTML =
-    // Row 1: Client statuses + MRR
+    // Row 1: Estados de clientes
     kpiCard('Cierre Pactado', pendientes, 'warning', '', 'filterByKpi(&quot;estado&quot;,&quot;pendiente_inicio&quot;)') +
     kpiCard('Activos', activos, 'success', '', 'filterByKpi(&quot;estado&quot;,&quot;activo&quot;)') +
     kpiCard('Caídos', caidos, caidos > 0 ? 'error' : '', '', 'filterByKpi(&quot;estado&quot;,&quot;caido&quot;)') +
-    kpiCard('MRR', formatPeso(mrr), 'info', activos + ' suscripciones') +
-    // Row 2: Financial + Lifetime
+    // Row 2: Cobranzas
     kpiCard('Saldo Vencido', formatPeso(totalVencido), totalVencido > 0 ? 'error' : '', '', 'filterByKpi(&quot;saldo&quot;,&quot;vencido&quot;)') +
-    kpiCard('Próximos Cobros', formatPeso(prox30), '', '30 días', 'filterByKpi(&quot;saldo&quot;,&quot;por_vencer&quot;)') +
+    kpiCard('Próximos Cobros', formatPeso(prox30), '30 días', '', 'filterByKpi(&quot;saldo&quot;,&quot;por_vencer&quot;)') +
+    kpiCard('Cobros Pend. Mes', formatPeso(cobrosMes), 'info', cobrosMesCant + ' cargos', 'filterByKpi(&quot;saldo&quot;,&quot;pend_mes&quot;)') +
+    // Row 3: Revenue y Lifetime
+    kpiCard('MRR', formatPeso(mrr), 'info', activos + ' suscripciones') +
     kpiCard('LTV Promedio', formatPeso(avgLTV), '', paidClients.length + ' clientes') +
     kpiCard('Lifetime Prom.', avgLifetimeMonths + ' meses', '', clientsWithDate.length + ' activos');
 }
@@ -2355,6 +2371,17 @@ function getFilteredData() {
       for (var i = 0; i < selectedSaldos.length; i++) {
         if (selectedSaldos[i] === 'vencido' && parseFloat(row.saldo_vencido) > 0) matchesSaldo = true;
         if (selectedSaldos[i] === 'por_vencer' && parseFloat(row.saldo_por_vencer_30d) > 0) matchesSaldo = true;
+        if (selectedSaldos[i] === 'pend_mes') {
+          var now = new Date();
+          var mesInicio = new Date(now.getFullYear(), now.getMonth(), 1);
+          var mesFin = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+          var tienePendMes = allCargos.some(function(ca) {
+            if (ca.cliente_id !== row.id || ca.estado === 'pagado') return false;
+            var fv = ca.fecha_vencimiento ? new Date(ca.fecha_vencimiento + 'T00:00:00') : null;
+            return fv && fv >= mesInicio && fv <= mesFin;
+          });
+          if (tienePendMes) matchesSaldo = true;
+        }
         if (selectedSaldos[i] === 'al_dia' && !(parseFloat(row.saldo_vencido) > 0) && !(parseFloat(row.saldo_por_vencer_30d) > 0)) matchesSaldo = true;
       }
       if (!matchesSaldo) return false;
@@ -3372,7 +3399,7 @@ function getSelectedSaldos() {
 }
 
 function saldoLabel(val) {
-  var map = { vencido: 'Con saldo vencido', por_vencer: 'Por vencer (30d)', al_dia: 'Al día' };
+  var map = { vencido: 'Con saldo vencido', por_vencer: 'Por vencer (30d)', pend_mes: 'Pendiente mes corriente', al_dia: 'Al día' };
   return map[val] || val;
 }
 
