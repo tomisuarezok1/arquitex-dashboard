@@ -3172,20 +3172,28 @@ function renderSetupBanner(clientId) {
 
   var pendientes = setupCargos.filter(function(c) { return c.estado === 'pendiente' || c.estado === 'vencido'; });
   var pagados = setupCargos.filter(function(c) { return c.estado === 'pagado'; });
-  var cliente = allClientes.find(function(c) { return c.id === clientId; });
   var onboarded = cliente && cliente.onboarding_ready;
+  var firstCuotaPaid = setupCargos.some(function(c) {
+    return c.concepto === 'setup_c1' && c.estado === 'pagado';
+  });
 
-  // All paid
-  if (pendientes.length === 0 && pagados.length > 0) {
-    if (onboarded) {
-      return '<div class="setup-banner setup-banner-done">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>' +
-        ' Setup pagado &middot; Onboarding iniciado' +
-      '</div>';
-    }
+  // Onboarding already started
+  if (onboarded) {
+    return '<div class="setup-banner setup-banner-done">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>' +
+      ' Onboarding iniciado' +
+    '</div>';
+  }
+
+  // First cuota paid → ready for onboarding
+  if (firstCuotaPaid) {
+    var remainingCount = pendientes.length;
+    var remainingSub = remainingCount > 0
+      ? ' (' + remainingCount + (remainingCount === 1 ? ' cuota pendiente)' : ' cuotas pendientes)')
+      : '';
     return '<div class="setup-banner setup-banner-ready">' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>' +
-      ' Setup pagado &middot; Listo para iniciar onboarding' +
+      ' 1° cuota pagada &middot; Listo para iniciar onboarding' + remainingSub +
     '</div>';
   }
 
@@ -3220,11 +3228,11 @@ function shouldShowOnboardingBtn(clientId) {
   });
   // If no setup cargos exist yet, don't show (client just entered, setup not configured)
   if (setupCargos.length === 0) return false;
-  // Check all setup cargos are paid or anulado
-  var allSetupResolved = setupCargos.every(function(c) {
-    return c.estado === 'pagado' || c.estado === 'anulado';
+  // Check if at least the first setup cuota is paid
+  var firstCuotaPaid = setupCargos.some(function(c) {
+    return c.concepto === 'setup_c1' && c.estado === 'pagado';
   });
-  return allSetupResolved;
+  return firstCuotaPaid;
 }
 
 /* ===== HISTORIAL DE PAGOS ===== */
