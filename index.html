@@ -2594,7 +2594,7 @@ function openFicha(clientId) {
   document.getElementById('slideoutHeader').innerHTML = headerHtml;
 
   // Body
-  var bodyHtml = renderDatosCobro(cliente) + renderFichaCierre(cliente) + renderPlanPagos(clientId) + renderHistorialPagos(clientId);
+  var bodyHtml = renderDatosCobro(cliente) + renderFichaCierre(cliente) + renderPlanPagos(clientId);
   document.getElementById('slideoutBody').innerHTML = bodyHtml;
 
   openSlideout();
@@ -2706,7 +2706,7 @@ async function saveDatos(e) {
 }
 
 /* ===== PLAN DE PAGOS ===== */
-var planView = 'timeline';
+var planView = 'tabla';
 
 function renderPlanPagos(clientId) {
   var cargos = allCargos.filter(function(c) { return c.cliente_id === clientId; });
@@ -2761,7 +2761,12 @@ function renderTimeline(cargos, clientId) {
       '<div class="timeline-cards">';
     groups[month].forEach(function(cargo) {
       var pago = allPagos.find(function(p) { return p.cargo_id === cargo.id; });
-      var pagoInfo = pago ? 'Pagado el ' + formatDate(pago.fecha_pago) + ' — ' + formatPeso(pago.monto) : '';
+      var pagoInfo = '';
+      if (pago) {
+        pagoInfo = 'Pagado el ' + formatDate(pago.fecha_pago) + ' — ' + formatPeso(pago.monto) + ' (' + metodoLabel(pago.metodo) + ')';
+      } else if (cargo.estado === 'pagado') {
+        pagoInfo = 'Pagado (sin detalle)';
+      }
 
       html += '<div class="timeline-card">' +
         '<div class="timeline-card-left">' +
@@ -2795,7 +2800,12 @@ function renderPlanTable(cargos, clientId) {
 
   cargos.forEach(function(cargo) {
     var pago = allPagos.find(function(p) { return p.cargo_id === cargo.id; });
-    var pagoInfo = pago ? formatDate(pago.fecha_pago) + ' — ' + formatPeso(pago.monto) : '—';
+    var pagoInfo = '—';
+    if (pago) {
+      pagoInfo = formatDate(pago.fecha_pago) + ' — ' + formatPeso(pago.monto) + '<br><span style="color:var(--color-text-muted)">' + metodoLabel(pago.metodo) + '</span>';
+    } else if (cargo.estado === 'pagado') {
+      pagoInfo = '<span style="color:var(--color-text-muted)">Pagado (sin detalle)</span>';
+    }
 
     html += '<tr>' +
       '<td>' + conceptoLabel(cargo.concepto) + '</td>' +
@@ -3324,37 +3334,6 @@ function shouldShowOnboardingBtn(clientId) {
     return c.concepto === 'setup_c1' && c.estado === 'pagado';
   });
   return firstCuotaPaid;
-}
-
-/* ===== HISTORIAL DE PAGOS ===== */
-function renderHistorialPagos(clientId) {
-  var clientePagos = allPagos.filter(function(p) { return p.cliente_id === clientId; });
-  if (clientePagos.length === 0) return '';
-
-  var html = '<div class="slideout-section">' +
-    '<div class="slideout-section-title">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-success)"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' +
-      ' Historial de Pagos (' + clientePagos.length + ')' +
-    '</div>' +
-    '<div class="table-container" style="border:none;"><div class="table-scroll"><table class="plan-table"><thead><tr>' +
-    '<th>Fecha</th><th>Monto</th><th>Método</th><th>Concepto</th><th>Nota</th>' +
-    '</tr></thead><tbody>';
-
-  clientePagos.forEach(function(pago) {
-    var cargo = pago.cargo_id ? allCargos.find(function(c) { return c.id === pago.cargo_id; }) : null;
-    var conceptoStr = cargo ? conceptoLabel(cargo.concepto) : '<span style="color:var(--color-text-muted)">Sin cargo</span>';
-
-    html += '<tr>' +
-      '<td>' + formatDate(pago.fecha_pago) + '</td>' +
-      '<td style="font-weight:600">' + formatPeso(pago.monto) + '</td>' +
-      '<td>' + metodoLabel(pago.metodo) + '</td>' +
-      '<td>' + conceptoStr + '</td>' +
-      '<td class="text-xs">' + (pago.nota ? escapeHtml(pago.nota) : '—') + '</td>' +
-    '</tr>';
-  });
-
-  html += '</tbody></table></div></div></div>';
-  return html;
 }
 
 /* ===== CONFIRMAR ONBOARDING ===== */
