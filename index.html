@@ -776,6 +776,7 @@ table { border-collapse: collapse; width: 100%; }
 .badge-pagado { background: var(--color-success-bg); color: var(--color-success); }
 .badge-vencido { background: var(--color-error-bg); color: var(--color-error); }
 .badge-pendiente-cargo { background: var(--color-info-bg); color: var(--color-info); }
+.badge-parcial { background: var(--color-warning-bg); color: var(--color-warning); }
 .badge-anulado { background: var(--color-surface-offset); color: var(--color-text-muted); text-decoration: line-through; }
 
 .debito-badge {
@@ -2255,6 +2256,7 @@ function estadoLabel(estado) {
 function cargoEstadoBadgeClass(estado) {
   const map = {
     pagado: 'badge-pagado',
+    parcial: 'badge-parcial',
     pendiente: 'badge-pendiente-cargo',
     vencido: 'badge-vencido',
     anulado: 'badge-anulado'
@@ -2263,7 +2265,7 @@ function cargoEstadoBadgeClass(estado) {
 }
 
 function cargoEstadoLabel(estado) {
-  const map = { pagado: 'Pagado', pendiente: 'Pendiente', vencido: 'Vencido', anulado: 'Anulado' };
+  const map = { pagado: 'Pagado', parcial: 'Parcial', pendiente: 'Pendiente', vencido: 'Vencido', anulado: 'Anulado' };
   return map[estado] || estado;
 }
 
@@ -2998,13 +3000,21 @@ function renderTimeline(cargos, clientId) {
       '<div class="timeline-month-label">' + formatMonthYear(month) + '</div>' +
       '<div class="timeline-cards">';
     groups[month].forEach(function(cargo) {
-      var pago = allPagos.find(function(p) { return p.cargo_id === cargo.id; });
+      var pagos = allPagos.filter(function(p) { return p.cargo_id === cargo.id; });
+      var totalPagado = pagos.reduce(function(s, p) { return s + (parseFloat(p.monto) || 0); }, 0);
       var pagoInfo = '';
-      if (pago) {
-        pagoInfo = 'Pagado el ' + formatDate(pago.fecha_pago) + ' — ' + formatPeso(pago.monto) + ' (' + metodoLabel(pago.metodo) + ')';
+      if (pagos.length > 0) {
+        pagoInfo = pagos.map(function(p) {
+          return formatDate(p.fecha_pago) + ' ' + formatPeso(p.monto) + ' (' + metodoLabel(p.metodo) + ')';
+        }).join(' · ');
+        if (totalPagado < cargo.monto) {
+          pagoInfo += ' · Restante: ' + formatPeso(cargo.monto - totalPagado);
+        }
       } else if (cargo.estado === 'pagado') {
         pagoInfo = 'Pagado (sin detalle)';
       }
+
+      var lastPago = pagos.length > 0 ? pagos[0] : null;
 
       html += '<div class="timeline-card">' +
         '<div class="timeline-card-left">' +
@@ -3018,7 +3028,7 @@ function renderTimeline(cargos, clientId) {
           '<div class="timeline-card-monto">' + formatPeso(cargo.monto) + '</div>' +
           '<span class="badge ' + cargoEstadoBadgeClass(cargo.estado) + '">' + cargoEstadoLabel(cargo.estado) + '</span>' +
           '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openEditCargoModal(\'' + cargo.id + '\')" title="Editar cargo">✎</button>' +
-          (pago ? '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openEditPagoModal(\'' + pago.id + '\')" title="Editar pago"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '') +
+          (lastPago ? '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openEditPagoModal(\'' + lastPago.id + '\')" title="Editar pago"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '') +
           (cargo.estado !== 'anulado' && cargo.estado !== 'pagado' ?
             '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openRegistrarPagoCargoModal(\'' + clientId + '\',\'' + cargo.id + '\')" title="Registrar pago">$</button>' : '') +
         '</div>' +
@@ -3038,13 +3048,21 @@ function renderPlanTable(cargos, clientId) {
     '</tr></thead><tbody>';
 
   cargos.forEach(function(cargo) {
-    var pago = allPagos.find(function(p) { return p.cargo_id === cargo.id; });
+    var pagos = allPagos.filter(function(p) { return p.cargo_id === cargo.id; });
+    var totalPagado = pagos.reduce(function(s, p) { return s + (parseFloat(p.monto) || 0); }, 0);
     var pagoInfo = '—';
-    if (pago) {
-      pagoInfo = formatDate(pago.fecha_pago) + ' — ' + formatPeso(pago.monto) + '<br><span style="color:var(--color-text-muted)">' + metodoLabel(pago.metodo) + '</span>';
+    if (pagos.length > 0) {
+      pagoInfo = pagos.map(function(p) {
+        return formatDate(p.fecha_pago) + ' — ' + formatPeso(p.monto) + ' <span style="color:var(--color-text-muted)">' + metodoLabel(p.metodo) + '</span>';
+      }).join('<br>');
+      if (totalPagado < cargo.monto) {
+        pagoInfo += '<br><span style="color:var(--color-warning);font-weight:500;">Restante: ' + formatPeso(cargo.monto - totalPagado) + '</span>';
+      }
     } else if (cargo.estado === 'pagado') {
       pagoInfo = '<span style="color:var(--color-text-muted)">Pagado (sin detalle)</span>';
     }
+
+    var lastPago = pagos.length > 0 ? pagos[0] : null;
 
     html += '<tr>' +
       '<td>' + conceptoLabel(cargo.concepto) + '</td>' +
@@ -3054,7 +3072,7 @@ function renderPlanTable(cargos, clientId) {
       '<td class="text-xs">' + pagoInfo + '</td>' +
       '<td><div class="actions-cell">' +
         '<button class="btn btn-sm btn-ghost" onclick="openEditCargoModal(\'' + cargo.id + '\')" title="Editar cargo">✎</button>' +
-        (pago ? '<button class="btn btn-sm btn-ghost" onclick="openEditPagoModal(\'' + pago.id + '\')" title="Editar pago"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '') +
+        (lastPago ? '<button class="btn btn-sm btn-ghost" onclick="openEditPagoModal(\'' + lastPago.id + '\')" title="Editar pago"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '') +
         (cargo.estado !== 'anulado' ? '<button class="btn btn-sm btn-ghost" onclick="anularCargo(\'' + cargo.id + '\')" title="Anular" style="color:var(--color-error)">✕</button>' : '') +
         (cargo.estado !== 'anulado' && cargo.estado !== 'pagado' ? '<button class="btn btn-sm btn-ghost" onclick="openRegistrarPagoCargoModal(\'' + clientId + '\',\'' + cargo.id + '\')" title="Registrar pago">$</button>' : '') +
       '</div></td>' +
@@ -3332,16 +3350,21 @@ async function submitPago(e, clientId) {
     var res = await sb.from('pagos').insert(pagoData).select();
     if (res.error) throw res.error;
 
-    // If cargo linked, mark as pagado
-    if (cargoId) {
-      var cargoRes = await sb.from('cargos').update({ estado: 'pagado' }).eq('id', cargoId);
-      if (cargoRes.error) throw cargoRes.error;
-      var cargo = allCargos.find(function(c) { return c.id === cargoId; });
-      if (cargo) cargo.estado = 'pagado';
-    }
-
-    // Update local pagos
+    // Update local pagos first (needed for total calculation)
     if (res.data && res.data[0]) allPagos.unshift(res.data[0]);
+
+    // If cargo linked, determine if parcial or pagado
+    if (cargoId) {
+      var cargo = allCargos.find(function(c) { return c.id === cargoId; });
+      if (cargo) {
+        var totalPagado = allPagos.filter(function(p) { return p.cargo_id === cargoId; })
+          .reduce(function(s, p) { return s + (parseFloat(p.monto) || 0); }, 0);
+        var nuevoEstado = totalPagado >= parseFloat(cargo.monto) ? 'pagado' : 'parcial';
+        var cargoRes = await sb.from('cargos').update({ estado: nuevoEstado }).eq('id', cargoId);
+        if (cargoRes.error) throw cargoRes.error;
+        cargo.estado = nuevoEstado;
+      }
+    }
 
     closeModal();
     showToast('Pago registrado correctamente', 'success');
@@ -3376,7 +3399,7 @@ function openEditCargoModal(cargoId) {
       formField('Fecha de Vencimiento', 'date', 'fecha_vencimiento', cargo.fecha_vencimiento) +
       formField('Nota', 'text', 'nota', cargo.nota || '', true) +
       '<div class="form-group"><label class="form-label">Estado</label><select class="form-select" name="estado">' +
-        ['pendiente','pagado','vencido','anulado'].map(function(e) {
+        ['pendiente','parcial','pagado','vencido','anulado'].map(function(e) {
           return '<option value="' + e + '"' + (cargo.estado === e ? ' selected' : '') + '>' + cargoEstadoLabel(e) + '</option>';
         }).join('') +
       '</select></div>' +
@@ -3433,10 +3456,65 @@ function openEditPagoModal(pagoId) {
         }).join('') +
       '</select></div>' +
     '</div></form>' +
-    '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
+    '<div class="modal-footer">' +
+    '<button class="btn btn-sm" onclick="confirmDeletePago(\'' + pagoId + '\')" style="color:var(--color-error);margin-right:auto;">Eliminar pago</button>' +
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="this.closest(\'.modal\').querySelector(\'form\').requestSubmit()">Guardar</button></div>';
 
   openModal(html);
+}
+
+function confirmDeletePago(pagoId) {
+  var pago = allPagos.find(function(p) { return p.id === pagoId; });
+  if (!pago) return;
+  var html = '<div class="modal-header"><div class="modal-title">Eliminar Pago</div>' +
+    '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
+    '<div class="modal-body"><p class="text-sm">¿Eliminar el pago de <strong>' + formatPeso(pago.monto) + '</strong> del <strong>' + formatDate(pago.fecha_pago) + '</strong>?</p>' +
+    '<p class="text-xs" style="color:var(--color-text-muted);margin-top:8px;">El estado del cargo se recalculará automáticamente.</p></div>' +
+    '<div class="modal-footer"><button class="btn btn-secondary" onclick="openEditPagoModal(\'' + pagoId + '\')">Volver</button>' +
+    '<button class="btn btn-primary" style="background:var(--color-error);" onclick="deletePago(\'' + pagoId + '\')">Eliminar</button></div>';
+  openModal(html);
+}
+
+async function deletePago(pagoId) {
+  var pago = allPagos.find(function(p) { return p.id === pagoId; });
+  if (!pago) return;
+  var cargoId = pago.cargo_id;
+
+  try {
+    var res = await sb.from('pagos').delete().eq('id', pagoId);
+    if (res.error) throw res.error;
+
+    // Remove from local array
+    allPagos = allPagos.filter(function(p) { return p.id !== pagoId; });
+
+    // Recalculate cargo estado
+    if (cargoId) {
+      var cargo = allCargos.find(function(c) { return c.id === cargoId; });
+      if (cargo) {
+        var totalPagado = allPagos.filter(function(p) { return p.cargo_id === cargoId; })
+          .reduce(function(s, p) { return s + (parseFloat(p.monto) || 0); }, 0);
+        var nuevoEstado;
+        if (totalPagado <= 0) nuevoEstado = 'pendiente';
+        else if (totalPagado >= parseFloat(cargo.monto)) nuevoEstado = 'pagado';
+        else nuevoEstado = 'parcial';
+        var cargoRes = await sb.from('cargos').update({ estado: nuevoEstado }).eq('id', cargoId);
+        if (!cargoRes.error) cargo.estado = nuevoEstado;
+      }
+    }
+
+    closeModal();
+    showToast('Pago eliminado', 'success');
+
+    // Refresh
+    var vistaRes = await sb.from('vista_saldo_clientes').select('*');
+    if (!vistaRes.error) vistaData = vistaRes.data || [];
+    renderKPIs();
+    renderTable();
+    if (selectedClientId) openFicha(selectedClientId);
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
 }
 
 async function submitEditPago(e, pagoId) {
@@ -3453,8 +3531,28 @@ async function submitEditPago(e, pagoId) {
     if (res.error) throw res.error;
     var pago = allPagos.find(function(p) { return p.id === pagoId; });
     if (pago) Object.assign(pago, data);
+
+    // Recalculate cargo estado after monto change
+    if (pago && pago.cargo_id) {
+      var cargo = allCargos.find(function(c) { return c.id === pago.cargo_id; });
+      if (cargo) {
+        var totalPagado = allPagos.filter(function(p) { return p.cargo_id === pago.cargo_id; })
+          .reduce(function(s, p) { return s + (parseFloat(p.monto) || 0); }, 0);
+        var nuevoEstado;
+        if (totalPagado <= 0) nuevoEstado = 'pendiente';
+        else if (totalPagado >= parseFloat(cargo.monto)) nuevoEstado = 'pagado';
+        else nuevoEstado = 'parcial';
+        var cargoRes = await sb.from('cargos').update({ estado: nuevoEstado }).eq('id', pago.cargo_id);
+        if (!cargoRes.error) cargo.estado = nuevoEstado;
+      }
+    }
+
     closeModal();
     showToast('Pago actualizado', 'success');
+    var vistaRes = await sb.from('vista_saldo_clientes').select('*');
+    if (!vistaRes.error) vistaData = vistaRes.data || [];
+    renderKPIs();
+    renderTable();
     if (selectedClientId) openFicha(selectedClientId);
   } catch(err) {
     showToast('Error: ' + err.message, 'error');
