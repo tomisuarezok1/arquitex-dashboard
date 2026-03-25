@@ -391,6 +391,102 @@ table { border-collapse: collapse; width: 100%; }
   cursor: not-allowed;
 }
 
+/* ===== VIEW TABS ===== */
+.view-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.view-tab {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+
+.view-tab:hover {
+  color: var(--color-text);
+}
+
+.view-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Historial table */
+.historial-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.historial-table th,
+.historial-table td {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 13px;
+  border-bottom: 1px solid var(--color-divider);
+  white-space: nowrap;
+}
+
+.historial-table th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.historial-table tbody tr {
+  transition: background var(--duration) var(--ease);
+}
+
+.historial-table tbody tr:hover {
+  background: var(--color-surface-hover);
+}
+
+.historial-metodo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--color-surface-offset);
+  color: var(--color-text-secondary);
+}
+
+.historial-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  gap: 8px;
+}
+
+.historial-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 /* ===== KPI SECTION ===== */
 .kpi-section {
   margin-bottom: 16px;
@@ -1929,6 +2025,14 @@ table { border-collapse: collapse; width: 100%; }
 
     <!-- Dashboard content (hidden until loaded) -->
     <div id="dashboardContent" style="display:none;">
+      <!-- VIEW TABS -->
+      <div class="view-tabs">
+        <button class="view-tab active" id="tabClientes" onclick="switchView('clientes')">Clientes</button>
+        <button class="view-tab" id="tabHistorial" onclick="switchView('historial')">Historial de Cobros</button>
+      </div>
+
+      <!-- ===== VIEW: CLIENTES ===== -->
+      <div id="viewClientes">
       <!-- KPI CARDS -->
       <div class="kpi-section" id="kpiSection">
         <button class="kpi-toggle" onclick="toggleKpis()">
@@ -1977,6 +2081,47 @@ table { border-collapse: collapse; width: 100%; }
           </table>
         </div>
       </div>
+      </div><!-- /viewClientes -->
+
+      <!-- ===== VIEW: HISTORIAL DE COBROS ===== -->
+      <div id="viewHistorial" style="display:none;">
+        <div class="historial-toolbar">
+          <div class="search-input">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="historialSearch" placeholder="Buscar por cliente…" autocomplete="off" oninput="renderHistorial()">
+          </div>
+          <div class="multi-filter" id="metodoFilter">
+            <button class="filter-select" onclick="toggleMultiFilter('metodoFilter')" type="button" style="width:100%;text-align:left;">Todos los métodos <span class="multi-filter-arrow">▾</span></button>
+            <div class="multi-filter-dropdown" id="metodoFilterDropdown">
+              <label class="multi-filter-option"><input type="checkbox" value="transferencia" onchange="renderHistorial()"> Transferencia</label>
+              <label class="multi-filter-option"><input type="checkbox" value="efectivo" onchange="renderHistorial()"> Efectivo</label>
+              <label class="multi-filter-option"><input type="checkbox" value="debito_automatico" onchange="renderHistorial()"> Débito Auto</label>
+              <label class="multi-filter-option"><input type="checkbox" value="debito" onchange="renderHistorial()"> Débito</label>
+              <label class="multi-filter-option"><input type="checkbox" value="manual" onchange="renderHistorial()"> Manual</label>
+              <label class="multi-filter-option"><input type="checkbox" value="otro" onchange="renderHistorial()"> Otro</label>
+            </div>
+          </div>
+          <div class="toolbar-spacer"></div>
+          <span class="historial-count" id="historialCount"></span>
+        </div>
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="crm-table historial-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Cliente</th>
+                  <th>Concepto</th>
+                  <th>Monto</th>
+                  <th>Método</th>
+                </tr>
+              </thead>
+              <tbody id="historialBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /viewHistorial -->
+
     </div>
   </main>
 
@@ -2489,6 +2634,99 @@ function sortBy(col) {
   renderTable();
 }
 
+/* ===== VIEW TABS ===== */
+var currentView = 'clientes';
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('tabClientes').classList.toggle('active', view === 'clientes');
+  document.getElementById('tabHistorial').classList.toggle('active', view === 'historial');
+  document.getElementById('viewClientes').style.display = view === 'clientes' ? 'block' : 'none';
+  document.getElementById('viewHistorial').style.display = view === 'historial' ? 'block' : 'none';
+  if (view === 'historial') renderHistorial();
+}
+
+/* ===== HISTORIAL DE COBROS ===== */
+function renderHistorial() {
+  var search = (document.getElementById('historialSearch').value || '').toLowerCase().trim();
+
+  // Filtro por método de pago
+  var metodoChecks = document.querySelectorAll('#metodoFilterDropdown input:checked');
+  var metodoFilter = [];
+  metodoChecks.forEach(function(cb) { metodoFilter.push(cb.value); });
+
+  // Enriquecer pagos con datos de cargo y cliente
+  var rows = allPagos.map(function(pago) {
+    var cargo = allCargos.find(function(c) { return c.id === pago.cargo_id; });
+    var cliente = allClientes.find(function(c) { return c.id === pago.cliente_id; });
+    var clienteNombre = cliente
+      ? (cliente.nombre_empresa || ((cliente.nombre || '') + ' ' + (cliente.apellido || '')).trim() || 'Sin nombre')
+      : 'Cliente eliminado';
+    return {
+      fecha: pago.fecha_pago,
+      clienteNombre: clienteNombre,
+      clienteId: pago.cliente_id,
+      concepto: cargo ? cargo.concepto : '—',
+      periodo: cargo ? cargo.periodo : null,
+      monto: parseFloat(pago.monto) || 0,
+      metodo: pago.metodo || '—'
+    };
+  });
+
+  // Ordenar por fecha descendente
+  rows.sort(function(a, b) {
+    if (!a.fecha) return 1;
+    if (!b.fecha) return -1;
+    return b.fecha.localeCompare(a.fecha);
+  });
+
+  // Aplicar filtros
+  if (search) {
+    rows = rows.filter(function(r) {
+      return r.clienteNombre.toLowerCase().indexOf(search) !== -1;
+    });
+  }
+  if (metodoFilter.length > 0) {
+    rows = rows.filter(function(r) {
+      return metodoFilter.indexOf(r.metodo) !== -1;
+    });
+  }
+
+  // Contador
+  document.getElementById('historialCount').textContent = rows.length + ' pago' + (rows.length !== 1 ? 's' : '');
+
+  // Render
+  var tbody = document.getElementById('historialBody');
+  if (rows.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="5">' +
+      '<div class="historial-empty">' +
+      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>' +
+      '<p>No hay pagos registrados' + (search || metodoFilter.length ? ' con estos filtros' : '') + '.</p>' +
+      '</div></td></tr>';
+    return;
+  }
+
+  var html = '';
+  rows.forEach(function(r) {
+    var conceptoText = conceptoLabel(r.concepto);
+    if (r.periodo) conceptoText += ' · ' + formatMonthYear(r.periodo);
+    html +=
+      '<tr onclick="openClientFromHistorial(\'' + r.clienteId + '\')" style="cursor:pointer;">' +
+      '<td>' + formatDate(r.fecha) + '</td>' +
+      '<td style="font-weight:500;">' + escapeHtml(r.clienteNombre) + '</td>' +
+      '<td>' + conceptoText + '</td>' +
+      '<td style="font-weight:600;font-variant-numeric:tabular-nums;">' + formatPeso(r.monto) + '</td>' +
+      '<td><span class="historial-metodo">' + metodoLabel(r.metodo) + '</span></td>' +
+      '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function openClientFromHistorial(clientId) {
+  openFicha(clientId);
+}
+
 function renderTable() {
   renderTableHead();
   var filtered = getFilteredData();
@@ -2779,7 +3017,8 @@ function renderTimeline(cargos, clientId) {
         '<div class="timeline-card-right">' +
           '<div class="timeline-card-monto">' + formatPeso(cargo.monto) + '</div>' +
           '<span class="badge ' + cargoEstadoBadgeClass(cargo.estado) + '">' + cargoEstadoLabel(cargo.estado) + '</span>' +
-          '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openEditCargoModal(\'' + cargo.id + '\')" title="Editar">✎</button>' +
+          '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openEditCargoModal(\'' + cargo.id + '\')" title="Editar cargo">✎</button>' +
+          (pago ? '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openEditPagoModal(\'' + pago.id + '\')" title="Editar pago"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '') +
           (cargo.estado !== 'anulado' && cargo.estado !== 'pagado' ?
             '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openRegistrarPagoCargoModal(\'' + clientId + '\',\'' + cargo.id + '\')" title="Registrar pago">$</button>' : '') +
         '</div>' +
@@ -2814,7 +3053,8 @@ function renderPlanTable(cargos, clientId) {
       '<td><span class="badge ' + cargoEstadoBadgeClass(cargo.estado) + '">' + cargoEstadoLabel(cargo.estado) + '</span></td>' +
       '<td class="text-xs">' + pagoInfo + '</td>' +
       '<td><div class="actions-cell">' +
-        '<button class="btn btn-sm btn-ghost" onclick="openEditCargoModal(\'' + cargo.id + '\')" title="Editar">✎</button>' +
+        '<button class="btn btn-sm btn-ghost" onclick="openEditCargoModal(\'' + cargo.id + '\')" title="Editar cargo">✎</button>' +
+        (pago ? '<button class="btn btn-sm btn-ghost" onclick="openEditPagoModal(\'' + pago.id + '\')" title="Editar pago"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '') +
         (cargo.estado !== 'anulado' ? '<button class="btn btn-sm btn-ghost" onclick="anularCargo(\'' + cargo.id + '\')" title="Anular" style="color:var(--color-error)">✕</button>' : '') +
         (cargo.estado !== 'anulado' && cargo.estado !== 'pagado' ? '<button class="btn btn-sm btn-ghost" onclick="openRegistrarPagoCargoModal(\'' + clientId + '\',\'' + cargo.id + '\')" title="Registrar pago">$</button>' : '') +
       '</div></td>' +
@@ -3170,6 +3410,51 @@ async function submitEditCargo(e, cargoId) {
     if (!vistaRes.error) vistaData = vistaRes.data || [];
     renderKPIs();
     renderTable();
+    if (selectedClientId) openFicha(selectedClientId);
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+/* ===== EDITAR PAGO MODAL ===== */
+function openEditPagoModal(pagoId) {
+  var pago = allPagos.find(function(p) { return p.id === pagoId; });
+  if (!pago) return;
+
+  var html = '<div class="modal-header"><div class="modal-title">Editar Pago</div>' +
+    '<button class="icon-btn" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
+    '<form onsubmit="submitEditPago(event, \'' + pagoId + '\')" class="modal-body">' +
+    '<div class="form-grid">' +
+      formField('Fecha de Pago', 'date', 'fecha_pago', pago.fecha_pago || '') +
+      formField('Monto', 'number', 'monto', pago.monto) +
+      '<div class="form-group"><label class="form-label">Método de Pago</label><select class="form-select" name="metodo">' +
+        ['transferencia','efectivo','debito_automatico','debito','manual','otro'].map(function(m) {
+          return '<option value="' + m + '"' + (pago.metodo === m ? ' selected' : '') + '>' + metodoLabel(m) + '</option>';
+        }).join('') +
+      '</select></div>' +
+    '</div></form>' +
+    '<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="this.closest(\'.modal\').querySelector(\'form\').requestSubmit()">Guardar</button></div>';
+
+  openModal(html);
+}
+
+async function submitEditPago(e, pagoId) {
+  e.preventDefault();
+  var fd = new FormData(e.target);
+  var data = {
+    fecha_pago: fd.get('fecha_pago'),
+    monto: parseFloat(fd.get('monto')),
+    metodo: fd.get('metodo')
+  };
+
+  try {
+    var res = await sb.from('pagos').update(data).eq('id', pagoId);
+    if (res.error) throw res.error;
+    var pago = allPagos.find(function(p) { return p.id === pagoId; });
+    if (pago) Object.assign(pago, data);
+    closeModal();
+    showToast('Pago actualizado', 'success');
     if (selectedClientId) openFicha(selectedClientId);
   } catch(err) {
     showToast('Error: ' + err.message, 'error');
