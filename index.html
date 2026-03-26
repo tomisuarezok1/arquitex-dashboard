@@ -2065,6 +2065,10 @@ table { border-collapse: collapse; width: 100%; }
             <label class="multi-filter-option"><input type="checkbox" value="al_dia" onchange="onSaldoFilterChange()"> Al día</label>
           </div>
         </div>
+        <button class="btn btn-sm btn-ghost" id="clearFiltersBtn" onclick="clearAllFilters()" style="display:none;white-space:nowrap;color:var(--color-text-muted);gap:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          Limpiar filtros
+        </button>
         <div class="toolbar-spacer"></div>
         <span class="results-count" id="resultsCount"></span>
         <button class="btn btn-primary" onclick="openNewClientModal()" style="margin-left:8px;white-space:nowrap;">
@@ -2773,7 +2777,7 @@ function renderTable() {
 }
 
 /* ===== FILTERS ===== */
-document.getElementById('searchInput').addEventListener('input', renderTable);
+document.getElementById('searchInput').addEventListener('input', function() { renderTable(); updateClearFiltersBtn(); });
 
 /* ===== FICHA DE CLIENTE ===== */
 function openFicha(clientId) {
@@ -3814,6 +3818,7 @@ function onEstadoFilterChange() {
     btn.innerHTML = selected.length + ' estados <span class="multi-filter-arrow">\u25be</span>';
   }
   renderTable();
+  updateClearFiltersBtn();
 }
 
 /* ===== MULTI-FILTER SALDO ===== */
@@ -3840,6 +3845,7 @@ function onSaldoFilterChange() {
     btn.innerHTML = selected.length + ' saldos <span class="multi-filter-arrow">\u25be</span>';
   }
   renderTable();
+  updateClearFiltersBtn();
 }
 
 /* ===== KPI CLICK FILTER ===== */
@@ -3860,6 +3866,28 @@ function filterByKpi(type, value) {
     onSaldoFilterChange();
     onEstadoFilterChange();
   }
+}
+
+/* ===== CLEAR ALL FILTERS ===== */
+function clearAllFilters() {
+  document.getElementById('searchInput').value = '';
+  document.querySelectorAll('#estadoFilterDropdown input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+  document.querySelectorAll('#saldoFilterDropdown input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+  onEstadoFilterChange();
+  onSaldoFilterChange();
+  updateClearFiltersBtn();
+}
+
+function hasActiveFilters() {
+  var search = document.getElementById('searchInput').value.trim();
+  var estados = getSelectedEstados();
+  var saldos = getSelectedSaldos();
+  return search.length > 0 || estados.length > 0 || saldos.length > 0;
+}
+
+function updateClearFiltersBtn() {
+  var btn = document.getElementById('clearFiltersBtn');
+  if (btn) btn.style.display = hasActiveFilters() ? 'inline-flex' : 'none';
 }
 
 // Close multi-filter when clicking outside
