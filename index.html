@@ -2862,8 +2862,30 @@ async function updateEstado(clientId, newEstado) {
     if (c) c.estado = newEstado;
     var v = vistaData.find(function(x) { return x.id === clientId; });
     if (v) v.estado = newEstado;
+
+    // Si se marca como caído, anular todos los cargos pendientes y vencidos
+    if (newEstado === 'caido') {
+      var cargosPendientes = allCargos.filter(function(cg) {
+        return cg.cliente_id === clientId && (cg.estado === 'pendiente' || cg.estado === 'vencido');
+      });
+      if (cargosPendientes.length > 0) {
+        var ids = cargosPendientes.map(function(cg) { return cg.id; });
+        var anularRes = await sb.from('cargos').update({ estado: 'anulado' }).in('id', ids);
+        if (anularRes.error) throw anularRes.error;
+        cargosPendientes.forEach(function(cg) { cg.estado = 'anulado'; });
+        var vistaRes = await sb.from('vista_saldo_clientes').select('*');
+        if (!vistaRes.error) vistaData = vistaRes.data || [];
+        renderKPIs();
+        showToast('Estado actualizado a Caído — ' + cargosPendientes.length + ' cargo(s) anulado(s)', 'success');
+      } else {
+        showToast('Estado actualizado a Caído (sin cargos pendientes)', 'success');
+      }
+    } else {
+      showToast('Estado actualizado a ' + estadoLabel(newEstado), 'success');
+    }
+
     renderTable();
-    showToast('Estado actualizado a ' + estadoLabel(newEstado), 'success');
+    if (selectedClientId) openFicha(selectedClientId);
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
   }
