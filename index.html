@@ -2177,7 +2177,7 @@ let allCargos = [];
 let allPagos = [];
 let vistaData = [];
 let fichasData = [];
-let currentSort = { col: 'created_at', dir: 'desc' };
+let currentSort = { col: 'proximo_vencimiento', dir: 'asc' };
 let selectedClientId = null;
 let currentTheme = 'dark';
 
@@ -2621,6 +2621,10 @@ function sortData(data) {
     if (va == null) va = '';
     if (vb == null) vb = '';
     if (isDateCol) {
+      // Nulls go to the end regardless of sort direction
+      var aNull = !a[col], bNull = !b[col];
+      if (aNull && !bNull) return 1;
+      if (!aNull && bNull) return -1;
       va = va ? new Date(va).getTime() : 0;
       vb = vb ? new Date(vb).getTime() : 0;
     } else {
