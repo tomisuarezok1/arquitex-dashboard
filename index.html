@@ -791,6 +791,7 @@ table { border-collapse: collapse; width: 100%; }
 .debito-no { background: var(--color-error-bg); color: var(--color-error); }
 
 .saldo-vencido { color: var(--color-error); font-weight: 600; }
+.saldo-proximo { color: var(--color-warning); font-weight: 600; }
 .saldo-por-vencer { color: var(--color-text-secondary); }
 
 .obs-text {
@@ -2383,6 +2384,12 @@ async function loadData() {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('dashboardContent').style.display = 'block';
     renderKPIs();
+    // Set default filters: show pactados + activos
+    var cbPactado = document.querySelector('#estadoFilterDropdown input[value="pendiente_inicio"]');
+    var cbActivo = document.querySelector('#estadoFilterDropdown input[value="activo"]');
+    if (cbPactado) cbPactado.checked = true;
+    if (cbActivo) cbActivo.checked = true;
+    onEstadoFilterChange();
     // Enrich vistaData with fecha_inicio from clientes for sorting
     // Auto-populate fecha_inicio from ficha_cierre.fecha_inicio_mensualidad if missing
     vistaData.forEach(function(v) {
@@ -2758,15 +2765,30 @@ function renderTable() {
     var debitoConf = cliente.debito_configurado;
     var obs = cliente.observaciones || '';
     var obsShort = obs.length > 80 ? obs.substring(0, 80) + '…' : obs;
+    // Determine saldo display: rojo (vencido), amarillo (<=10 días), verde (>10 días)
+    var saldoHtml;
+    if (saldoVencido > 0) {
+      saldoHtml = '<div class="saldo-vencido text-xs">' + formatPeso(saldoVencido) + '</div>';
+    } else if (row.proximo_vencimiento) {
+      var hoy = new Date();
+      hoy.setHours(0,0,0,0);
+      var proxDate = new Date(row.proximo_vencimiento + 'T00:00:00');
+      var diffDias = Math.ceil((proxDate - hoy) / (1000 * 60 * 60 * 24));
+      if (diffDias <= 10) {
+        saldoHtml = '<span class="saldo-proximo text-xs">Próximo a cobro</span>';
+      } else {
+        saldoHtml = '<span class="text-xs" style="color:var(--color-success)">Al día</span>';
+      }
+    } else {
+      saldoHtml = '<span class="text-xs" style="color:var(--color-success)">Al día</span>';
+    }
     html += '<tr onclick="openFicha(\'' + row.id + '\')">' +
       '<td><div class="client-name">' + escapeHtml(row.nombre) + '</div></td>' +
       '<td><span class="badge badge-estado ' + estadoBadgeClass(row.estado) + '">' + estadoLabel(row.estado) + '</span></td>' +
       '<td class="text-xs">' + (cliente.created_at ? formatDate(cliente.created_at) : '—') + '</td>' +
       '<td class="text-xs">' + (cliente.fecha_inicio ? formatDate(cliente.fecha_inicio) : '—') + '</td>' +
       '<td title="Desde ' + formatDateFull(cliente.created_at) + '">' + daysToText(calcLifeTime(cliente.created_at)) + '</td>' +
-      '<td>' +
-        (saldoVencido > 0 ? '<div class="saldo-vencido text-xs">' + formatPeso(saldoVencido) + '</div>' : '<span class="text-xs" style="color:var(--color-success)">Al día</span>') +
-      '</td>' +
+      '<td>' + saldoHtml + '</td>' +
       '<td><span class="prox-venc-badge">' + proxVenc + '</span></td>' +
       '<td><span class="debito-badge ' + (debitoConf ? 'debito-si' : 'debito-no') + '">' + (debitoConf ? 'Sí' : 'No') + '</span></td>' +
       '<td><span class="obs-text" title="' + escapeHtml(obs) + '">' + escapeHtml(obsShort || '—') + '</span></td>' +
@@ -3358,6 +3380,63 @@ function openRegistrarPagoCargoModal(clientId, cargoId) {
   openModal(html);
 }
 
+// Auto-create next mensualidad cargo if none exists after the paid one
+async function autoCreateNextMensualidad(cargo) {
+  if (cargo.concepto !== 'mensualidad' && cargo.concepto !== 'anualidad') return;
+  var clientId = cargo.cliente_id;
+  var cliente = allClientes.find(function(c) { return c.id === clientId; });
+  if (!cliente || cliente.estado === 'caido') return;
+
+  // Check if there's already a next pending/vencido mensualidad after this one
+  var hasNext = allCargos.some(function(c) {
+    return c.cliente_id === clientId &&
+      c.concepto === cargo.concepto &&
+      c.id !== cargo.id &&
+      (c.estado === 'pendiente' || c.estado === 'vencido') &&
+      c.fecha_vencimiento > cargo.fecha_vencimiento;
+  });
+  if (hasNext) return;
+
+  // Calculate next period
+  var currentDate = new Date(cargo.fecha_vencimiento + 'T00:00:00');
+  var nextDate;
+  if (cargo.concepto === 'mensualidad') {
+    nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate());
+  } else {
+    nextDate = new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), currentDate.getDate());
+  }
+  var periodo = cargo.concepto === 'mensualidad'
+    ? nextDate.getFullYear() + '-' + String(nextDate.getMonth() + 1).padStart(2, '0')
+    : String(nextDate.getFullYear());
+
+  // Check duplicate period
+  var dupExists = allCargos.some(function(c) {
+    return c.cliente_id === clientId && c.concepto === cargo.concepto && c.periodo === periodo;
+  });
+  if (dupExists) return;
+
+  var newCargo = {
+    cliente_id: clientId,
+    concepto: cargo.concepto,
+    periodo: periodo,
+    monto: cargo.monto,
+    fecha_vencimiento: nextDate.toISOString().split('T')[0],
+    estado: 'pendiente'
+  };
+
+  try {
+    var res = await sb.from('cargos').insert(newCargo).select();
+    if (res.error) throw res.error;
+    if (res.data && res.data[0]) {
+      allCargos.push(res.data[0]);
+      allCargos.sort(function(a, b) { return (a.fecha_vencimiento || '').localeCompare(b.fecha_vencimiento || ''); });
+      showToast('Siguiente ' + (cargo.concepto === 'mensualidad' ? 'mensualidad' : 'anualidad') + ' creada: ' + periodo, 'success');
+    }
+  } catch(err) {
+    console.error('Error auto-creating next cargo:', err);
+  }
+}
+
 async function submitPago(e, clientId) {
   e.preventDefault();
   var fd = new FormData(e.target);
@@ -3389,6 +3468,11 @@ async function submitPago(e, clientId) {
         var cargoRes = await sb.from('cargos').update({ estado: nuevoEstado }).eq('id', cargoId);
         if (cargoRes.error) throw cargoRes.error;
         cargo.estado = nuevoEstado;
+
+        // Auto-create next mensualidad if this one is now fully paid
+        if (nuevoEstado === 'pagado') {
+          await autoCreateNextMensualidad(cargo);
+        }
       }
     }
 
@@ -3451,7 +3535,14 @@ async function submitEditCargo(e, cargoId) {
     var res = await sb.from('cargos').update(data).eq('id', cargoId);
     if (res.error) throw res.error;
     var cargo = allCargos.find(function(c) { return c.id === cargoId; });
+    var prevEstado = cargo ? cargo.estado : null;
     if (cargo) Object.assign(cargo, data);
+
+    // Auto-create next mensualidad if changed to pagado
+    if (data.estado === 'pagado' && prevEstado !== 'pagado' && cargo) {
+      await autoCreateNextMensualidad(cargo);
+    }
+
     closeModal();
     showToast('Cargo actualizado', 'success');
     // Refresh vista saldo after estado change
