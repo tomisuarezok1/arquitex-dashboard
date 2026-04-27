@@ -2425,17 +2425,17 @@ function renderKPIs() {
   var now30 = new Date();
   var en30d = new Date(now30.getTime() + 30 * 24 * 60 * 60 * 1000);
   var cargos30dCant = allCargos.filter(function(ca) {
-    if (ca.estado === 'pagado' || ca.estado === 'vencido') return false;
+    if (ca.estado === 'pagado' || ca.estado === 'vencido' || ca.estado === 'anulado') return false;
     var fv = ca.fecha_vencimiento ? new Date(ca.fecha_vencimiento + 'T00:00:00') : null;
     return fv && fv >= now30 && fv <= en30d;
   }).length;
 
-  // Cobros pendientes del mes corriente: cargos no pagados con vencimiento en el mes calendario actual
+  // Cobros pendientes del mes corriente: cargos con saldo (no pagados ni anulados) con vencimiento en el mes calendario actual
   var now = new Date();
   var mesInicio = new Date(now.getFullYear(), now.getMonth(), 1);
   var mesFin = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
   var cobrosMesData = allCargos.filter(function(ca) {
-    if (ca.estado === 'pagado') return false;
+    if (ca.estado === 'pagado' || ca.estado === 'anulado') return false;
     var fv = ca.fecha_vencimiento ? new Date(ca.fecha_vencimiento + 'T00:00:00') : null;
     return fv && fv >= mesInicio && fv <= mesFin;
   });
@@ -2598,7 +2598,7 @@ function getFilteredData() {
           var mesInicio = new Date(now.getFullYear(), now.getMonth(), 1);
           var mesFin = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
           var tienePendMes = allCargos.some(function(ca) {
-            if (ca.cliente_id !== row.id || ca.estado === 'pagado') return false;
+            if (ca.cliente_id !== row.id || ca.estado === 'pagado' || ca.estado === 'anulado') return false;
             var fv = ca.fecha_vencimiento ? new Date(ca.fecha_vencimiento + 'T00:00:00') : null;
             return fv && fv >= mesInicio && fv <= mesFin;
           });
